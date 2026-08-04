@@ -52,4 +52,44 @@ async function fetchEventos({ apiKey, licensePlate, from, to }) {
   return eventos;
 }
 
-module.exports = { fetchEventos };
+/**
+ * Trae el nombre de la empresa y la lista de vehículos asociados a la API key.
+ * Mismo esquema de auth que fetchEventos: header "auth" con la API key de la
+ * empresa. La empresa se identifica por CUÁL api key se usa, no por el path
+ * (organization en el path sigue siendo el organization_name fijo).
+ *
+ * Respuesta real observada:
+ * {
+ *   data: {
+ *     company: { name },
+ *     vehicle_groups: [{ id, name }],
+ *     vehicles: [{ license_plate, imei, vin }]
+ *   }
+ * }
+ */
+async function fetchOrganization({ apiKey }) {
+  const url = new URL(`${BASE_URL}/${ORGANIZATION_NAME}/organization`);
+
+  const res = await fetch(url, {
+    headers: { auth: apiKey },
+  });
+
+  if (!res.ok) {
+    const texto = await res.text().catch(() => '');
+    throw new Error(`Copiloto API (organization) respondió ${res.status}: ${texto}`);
+  }
+
+  const body = await res.json();
+  const data = body?.data || {};
+
+  return {
+    nombre: data.company?.name || null,
+    vehiculos: (data.vehicles || []).map((v) => ({
+      placa: v.license_plate,
+      imei: v.imei,
+      vin: v.vin,
+    })),
+  };
+}
+
+module.exports = { fetchEventos, fetchOrganization };

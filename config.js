@@ -34,4 +34,11 @@ function getApiKeyForEmpresa(empresaId) {
   return key;
 }
 
-module.exports = { ORGANIZATION_NAME, getApiKeyForEmpresa };
+// IDs internos de las empresas configuradas (las claves del JSON en
+// COPILOTO_EMPRESA_API_KEYS). El nombre "de verdad" para mostrar en el front
+// se obtiene llamando a la API de Copiloto (organization.company.name).
+function listEmpresaIds() {
+  return Object.keys(empresaApiKeys);
+}
+
+module.exports = { ORGANIZATION_NAME, getApiKeyForEmpresa, listEmpresaIds };
