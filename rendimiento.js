@@ -76,6 +76,9 @@ function calcularRendimiento(eventos, { desde, hasta }) {
       kmRecorridos: 0,
       litrosConsumidos: 0,
       rendimientoKmPorLitro: null,
+      velocidadPromedio: null,
+      muestrasVelocidad: 0,
+      sumaVelocidad: 0,
       muestras: 0,
       segmentos: 0,
       primerRegistro: null,
@@ -116,10 +119,22 @@ function calcularRendimiento(eventos, { desde, hasta }) {
     advertencias.push('No hubo consumo de combustible registrado en el rango; rendimiento indefinido.');
   }
 
+  // Velocidad promedio: media simple de "speed" sobre los eventos válidos del
+  // rango (por evento/GPS ping, misma granularidad que serieVelocidad).
+  const velocidadesValidas = enRango
+    .map((e) => e.speed)
+    .filter((v) => typeof v === 'number' && !Number.isNaN(v));
+  const sumaVelocidad = velocidadesValidas.reduce((acc, v) => acc + v, 0);
+  const muestrasVelocidad = velocidadesValidas.length;
+  const velocidadPromedio = muestrasVelocidad > 0 ? Number((sumaVelocidad / muestrasVelocidad).toFixed(1)) : null;
+
   return {
     kmRecorridos: Number(kmTotal.toFixed(2)),
     litrosConsumidos: Number(litrosTotal.toFixed(2)),
     rendimientoKmPorLitro: rendimiento !== null ? Number(rendimiento.toFixed(3)) : null,
+    velocidadPromedio,
+    muestrasVelocidad,
+    sumaVelocidad: Number(sumaVelocidad.toFixed(1)),
     muestras: enRango.length,
     segmentos,
     primerRegistro: enRango[0].gps_utc_time,
@@ -184,10 +199,18 @@ function calcularRendimientoPorViaje(eventos, { desde, hasta }) {
 function agregarFlota(resultadosPorVehiculo) {
   const kmTotal = resultadosPorVehiculo.reduce((acc, r) => acc + r.kmRecorridos, 0);
   const litrosTotal = resultadosPorVehiculo.reduce((acc, r) => acc + r.litrosConsumidos, 0);
+
+  // Velocidad promedio de flota: se pondera por cantidad de muestras de cada
+  // vehículo (no es el promedio simple de los promedios individuales), para
+  // que un vehículo con más registros pese más en el resultado.
+  const sumaVelocidadTotal = resultadosPorVehiculo.reduce((acc, r) => acc + (r.sumaVelocidad || 0), 0);
+  const muestrasVelocidadTotal = resultadosPorVehiculo.reduce((acc, r) => acc + (r.muestrasVelocidad || 0), 0);
+
   return {
     kmRecorridos: Number(kmTotal.toFixed(2)),
     litrosConsumidos: Number(litrosTotal.toFixed(2)),
     rendimientoKmPorLitro: litrosTotal > 0 ? Number((kmTotal / litrosTotal).toFixed(3)) : null,
+    velocidadPromedio: muestrasVelocidadTotal > 0 ? Number((sumaVelocidadTotal / muestrasVelocidadTotal).toFixed(1)) : null,
     vehiculos: resultadosPorVehiculo.length,
   };
 }

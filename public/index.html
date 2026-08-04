@@ -134,7 +134,7 @@
   }
   .resumen-flota {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap: 12px;
     margin-bottom: 8px;
   }
@@ -298,7 +298,6 @@
         h('td', null, numero(v.kmRecorridos, 1)),
         h('td', null, numero(v.litrosConsumidos, 1)),
         h('td', null, v.rendimientoKmPorLitro === null ? '—' : numero(v.rendimientoKmPorLitro, 2)),
-        h('td', null, v.muestras),
         h('td', null, v.advertencias && v.advertencias.length > 0
           ? h('span', { className: 'badge-warn' }, v.advertencias.length + ' aviso(s)')
           : '—')
@@ -310,14 +309,14 @@
         v.advertencias.forEach(function (a, i) {
           filas.push(
             h('tr', { key: 'adv-' + i, className: 'viajes-detalle' },
-              h('td', { colSpan: 6 }, '⚠ ' + a)
+              h('td', { colSpan: 5 }, '⚠ ' + a)
             )
           );
         });
       }
       filas.push(
         h('tr', { key: 'viajes-header', className: 'viajes-detalle' },
-          h('td', { colSpan: 6 },
+          h('td', { colSpan: 5 },
             h('strong', null, (v.viajes || []).length + ' viaje(s) detectado(s) en el rango')
           )
         )
@@ -325,7 +324,7 @@
       (v.viajes || []).forEach(function (viaje, i) {
         filas.push(
           h('tr', { key: 'viaje-' + i, className: 'viajes-detalle' },
-            h('td', { colSpan: 6 },
+            h('td', { colSpan: 5 },
               formatearFecha(viaje.inicio) + ' → ' + formatearFecha(viaje.fin) +
               ' · ' + numero(viaje.kmRecorridos, 1) + ' km' +
               ' · ' + numero(viaje.litrosSegunOdolitro, 1) + ' L' +
@@ -584,6 +583,12 @@
                 resultado.flota.rendimientoKmPorLitro === null ? '—' : numero(resultado.flota.rendimientoKmPorLitro, 2)
               ),
               h('div', { className: 'etiqueta' }, 'km/L (flota)')
+            ),
+            h('div', { className: 'metrica' },
+              h('div', { className: 'valor' },
+                resultado.flota.velocidadPromedio === null ? '—' : numero(resultado.flota.velocidadPromedio, 1)
+              ),
+              h('div', { className: 'etiqueta' }, 'km/h velocidad promedio')
             )
           ),
 
@@ -595,7 +600,6 @@
                 h('th', null, 'km'),
                 h('th', null, 'Litros'),
                 h('th', null, 'km/L'),
-                h('th', null, 'Muestras'),
                 h('th', null, 'Avisos')
               )
             ),
