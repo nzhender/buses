@@ -33,6 +33,60 @@ function toEpoch(evt) {
   return new Date(evt.gps_utc_time).getTime();
 }
 
+// Ralentí: motor encendido en marcha mínima sin desplazamiento (RPM entre 500
+// y 620, velocidad 0). Definición confirmada con el usuario.
+const RALENTI_RPM_MIN = 500;
+const RALENTI_RPM_MAX = 620;
+
+// Si entre dos eventos consecutivos hay un hueco de datos mayor a esto, no se
+// cuenta ese intervalo como ralentí (evita inflar el tiempo por pérdida de
+// señal o equipo apagado, donde no hay forma de saber qué pasó realmente).
+const RALENTI_HUECO_MAXIMO_MS = 10 * 60 * 1000;
+
+function esRalenti(evento) {
+  return (
+    typeof evento.rpm === 'number' &&
+    evento.rpm >= RALENTI_RPM_MIN &&
+    evento.rpm <= RALENTI_RPM_MAX &&
+    evento.speed === 0
+  );
+}
+
+/**
+ * Suma el tiempo en ralentí dentro de una lista de eventos ya ordenados y
+ * filtrados por rango. Para cada evento que cumple la condición de ralentí,
+ * se cuenta el tiempo hasta el siguiente evento (se asume que el estado se
+ * mantuvo hasta el próximo ping).
+ */
+function calcularRalentiMinutos(enRango, advertencias) {
+  let ralentiMs = 0;
+  let huecosIgnorados = 0;
+
+  for (let i = 0; i < enRango.length - 1; i++) {
+    const actual = enRango[i];
+    const siguiente = enRango[i + 1];
+    if (!esRalenti(actual)) continue;
+
+    const deltaMs = toEpoch(siguiente) - toEpoch(actual);
+    if (deltaMs <= 0) continue;
+
+    if (deltaMs > RALENTI_HUECO_MAXIMO_MS) {
+      huecosIgnorados += 1;
+      continue;
+    }
+
+    ralentiMs += deltaMs;
+  }
+
+  if (huecosIgnorados > 0) {
+    advertencias.push(
+      `Se ignoraron ${huecosIgnorados} hueco(s) de datos mayores a 10 minutos en el cálculo de ralentí (posible pérdida de señal o equipo apagado).`
+    );
+  }
+
+  return Number((ralentiMs / 60000).toFixed(1));
+}
+
 /** Ordena eventos por timestamp ascendente (no asumimos que la API los entregue ordenados). */
 function ordenarPorTiempo(eventos) {
   return [...eventos].sort((a, b) => toEpoch(a) - toEpoch(b));
@@ -79,6 +133,7 @@ function calcularRendimiento(eventos, { desde, hasta }) {
       velocidadPromedio: null,
       muestrasVelocidad: 0,
       sumaVelocidad: 0,
+      ralentiMinutos: 0,
       muestras: 0,
       segmentos: 0,
       primerRegistro: null,
@@ -128,6 +183,8 @@ function calcularRendimiento(eventos, { desde, hasta }) {
   const muestrasVelocidad = velocidadesValidas.length;
   const velocidadPromedio = muestrasVelocidad > 0 ? Number((sumaVelocidad / muestrasVelocidad).toFixed(1)) : null;
 
+  const ralentiMinutos = calcularRalentiMinutos(enRango, advertencias);
+
   return {
     kmRecorridos: Number(kmTotal.toFixed(2)),
     litrosConsumidos: Number(litrosTotal.toFixed(2)),
@@ -135,6 +192,7 @@ function calcularRendimiento(eventos, { desde, hasta }) {
     velocidadPromedio,
     muestrasVelocidad,
     sumaVelocidad: Number(sumaVelocidad.toFixed(1)),
+    ralentiMinutos,
     muestras: enRango.length,
     segmentos,
     primerRegistro: enRango[0].gps_utc_time,
@@ -205,12 +263,14 @@ function agregarFlota(resultadosPorVehiculo) {
   // que un vehículo con más registros pese más en el resultado.
   const sumaVelocidadTotal = resultadosPorVehiculo.reduce((acc, r) => acc + (r.sumaVelocidad || 0), 0);
   const muestrasVelocidadTotal = resultadosPorVehiculo.reduce((acc, r) => acc + (r.muestrasVelocidad || 0), 0);
+  const ralentiMinutosTotal = resultadosPorVehiculo.reduce((acc, r) => acc + (r.ralentiMinutos || 0), 0);
 
   return {
     kmRecorridos: Number(kmTotal.toFixed(2)),
     litrosConsumidos: Number(litrosTotal.toFixed(2)),
     rendimientoKmPorLitro: litrosTotal > 0 ? Number((kmTotal / litrosTotal).toFixed(3)) : null,
     velocidadPromedio: muestrasVelocidadTotal > 0 ? Number((sumaVelocidadTotal / muestrasVelocidadTotal).toFixed(1)) : null,
+    ralentiMinutos: Number(ralentiMinutosTotal.toFixed(1)),
     vehiculos: resultadosPorVehiculo.length,
   };
 }
