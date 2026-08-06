@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Rendimiento de Buses</title>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<style>
+  :root {
+    --azul: #1d4ed8;
+    --azul-claro: #eff6ff;
+    --gris: #6b7280;
+    --gris-claro: #f3f4f6;
+    --borde: #e5e7eb;
+    --verde: #15803d;
+    --rojo: #b91c1c;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: #fafafa;
+    color: #111827;
+  }
+  header {
+    background: var(--azul);
+    color: white;
+    padding: 20px 24px;
+  }
+  header h1 { margin: 0; font-size: 20px; }
+  header p { margin: 4px 0 0; font-size: 13px; opacity: 0.9; }
+  main {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 24px 16px 60px;
+  }
+  .card {
+    background: white;
+    border: 1px solid var(--borde);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+  label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 6px;
+  }
+  select, input[type="datetime-local"] {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--borde);
+    border-radius: 6px;
+    font-size: 14px;
+    background: white;
+  }
+  .fila {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  @media (max-width: 640px) {
+    .fila { grid-template-columns: 1fr; }
+  }
+  .vehiculos-box {
+    max-height: 220px;
+    overflow-y: auto;
+    border: 1px solid var(--borde);
+    border-radius: 6px;
+    padding: 10px 12px;
+  }
+  .vehiculo-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0;
+    font-size: 14px;
+  }
+  .vehiculo-item input { margin: 0; }
+  .top-vehiculos {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .link-btn {
+    background: none;
+    border: none;
+    color: var(--azul);
+    font-size: 13px;
+    cursor: pointer;
+    padding: 0;
+  }
+  button.primario {
+    background: var(--azul);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button.primario:disabled {
+    background: #9ca3af;
+    cursor: not-allowed;
+  }
+  .error-msg {
+    background: #fef2f2;
+    color: var(--rojo);
+    border: 1px solid #fecaca;
+    padding: 10px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    margin-bottom: 16px;
+  }
+  .aviso-msg {
+    background: #fffbeb;
+    color: #92400e;
+    border: 1px solid #fde68a;
+    padding: 10px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    margin-bottom: 16px;
+  }
+  .cargando {
+    color: var(--gris);
+    font-size: 14px;
+  }
+  .resumen-flota {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+  @media (max-width: 640px) {
+    .resumen-flota { grid-template-columns: 1fr; }
+  }
+  .metrica {
+    background: var(--azul-claro);
+    border-radius: 8px;
+    padding: 14px;
+    text-align: center;
+  }
+  .metrica .valor {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--azul);
+  }
+  .metrica .etiqueta {
+    font-size: 12px;
+    color: var(--gris);
+    margin-top: 2px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  th, td {
+    text-align: left;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--borde);
+  }
+  th { color: var(--gris); font-weight: 600; font-size: 12px; text-transform: uppercase; }
+  .placa-row { cursor: pointer; }
+  .placa-row:hover { background: var(--gris-claro); }
+  .badge-warn {
+    display: inline-block;
+    background: #fffbeb;
+    color: #92400e;
+    border: 1px solid #fde68a;
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 11px;
+  }
+  .viajes-detalle {
+    background: var(--gris-claro);
+  }
+  .viajes-detalle td { padding: 4px 10px 4px 30px; font-size: 12px; }
+  h2 { font-size: 16px; margin: 0 0 12px; }
+  h3 { font-size: 14px; margin: 20px 0 10px; }
+  .chart-wrap { position: relative; height: 320px; margin-top: 10px; }
+  .nota { font-size: 12px; color: var(--gris); margin-top: 8px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+  var h = React.createElement;
+  var useState = React.useState;
+  var useEffect = React.useEffect;
+  var useRef = React.useRef;
+  var useMemo = React.useMemo;
+
+  // --- utilidades ---
+
+  function formatearFecha(iso) {
+    if (!iso) return '';
+    var d = new Date(iso);
+    return d.toLocaleString('es-CL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+  }
+
+  function numero(n, decimales) {
+    if (n === null || n === undefined || Number.isNaN(n)) return '—';
+    return Number(n).toLocaleString('es-CL', { minimumFractionDigits: decimales, maximumFractionDigits: decimales });
+  }
+
+  // convierte minutos a un formato legible: "45 min" o "2h 15min"
+  function formatearDuracion(minutos) {
+    if (minutos === null || minutos === undefined || Number.isNaN(minutos)) return '—';
+    if (minutos < 60) return numero(minutos, 1) + ' min';
+    var horas = Math.floor(minutos / 60);
+    var mins = Math.round(minutos % 60);
+    return horas + 'h ' + mins + 'min';
+  }
+
+  // muestrea una serie para no pintar miles de puntos en el gráfico
+  function muestrear(serie, maxPuntos) {
+    if (!serie || serie.length <= maxPuntos) return serie || [];
+    var paso = Math.ceil(serie.length / maxPuntos);
+    var out = [];
+    for (var i = 0; i < serie.length; i += paso) out.push(serie[i]);
+    return out;
+  }
+
+  function aIsoDesdeLocal(valorInput) {
+    // input datetime-local no trae zona horaria; se interpreta en hora local del navegador
+    if (!valorInput) return null;
+    var d = new Date(valorInput);
+    if (Number.isNaN(d.getTime())) return null;
+    return d.toISOString();
+  }
+
+  // --- componente: gráfico de velocidad (Chart.js, sin wrapper de React) ---
+
+  function GraficoVelocidad(props) {
+    var canvasRef = useRef(null);
+    var chartRef = useRef(null);
+
+    useEffect(function () {
+      if (!canvasRef.current) return;
+      if (chartRef.current) {
+        chartRef.current.destroy();
+      }
+
+      var datasets = props.vehiculos.map(function (v, idx) {
+        var colores = ['#1d4ed8', '#b91c1c', '#15803d', '#a16207', '#7c3aed', '#0891b2'];
+        var color = colores[idx % colores.length];
+        var puntos = muestrear(v.serieVelocidad, 150);
+        return {
+          label: v.placa,
+          data: puntos.map(function (p) { return p.v; }),
+          borderColor: color,
+          backgroundColor: color,
+          borderWidth: 1.5,
+          pointRadius: 0,
+          tension: 0.15,
+        };
+      });
+
+      var etiquetas = [];
+      if (props.vehiculos[0]) {
+        etiquetas = muestrear(props.vehiculos[0].serieVelocidad, 150).map(function (p) {
+          return formatearFecha(p.t);
+        });
+      }
+
+      chartRef.current = new Chart(canvasRef.current, {
+        type: 'line',
+        data: { labels: etiquetas, datasets: datasets },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: false,
+          scales: {
+            y: { title: { display: true, text: 'km/h' } },
+          },
+          plugins: {
+            legend: { position: 'bottom' },
+          },
+        },
+      });
+
+      return function () {
+        if (chartRef.current) chartRef.current.destroy();
+      };
+    }, [props.vehiculos]);
+
+    return h('div', { className: 'chart-wrap' }, h('canvas', { ref: canvasRef }));
+  }
+
+  // --- componente: fila de vehículo con detalle de viajes expandible ---
+
+  function FilaVehiculo(props) {
+    var v = props.vehiculo;
+    var expandido = props.expandido;
+
+    var filas = [
+      h('tr', { key: 'main', className: 'placa-row', onClick: props.onToggle },
+        h('td', null, v.placa),
+        h('td', null, numero(v.kmRecorridos, 1)),
+        h('td', null, numero(v.litrosConsumidos, 1)),
+        h('td', null, v.rendimientoKmPorLitro === null ? '—' : numero(v.rendimientoKmPorLitro, 2)),
+        h('td', null, formatearDuracion(v.ralentiMinutos)),
+        h('td', null, v.advertencias && v.advertencias.length > 0
+          ? h('span', { className: 'badge-warn' }, v.advertencias.length + ' aviso(s)')
+          : '—')
+      ),
+    ];
+
+    if (expandido) {
+      if (v.advertencias && v.advertencias.length > 0) {
+        v.advertencias.forEach(function (a, i) {
+          filas.push(
+            h('tr', { key: 'adv-' + i, className: 'viajes-detalle' },
+              h('td', { colSpan: 6 }, '⚠ ' + a)
+            )
+          );
+        });
+      }
+      filas.push(
+        h('tr', { key: 'viajes-header', className: 'viajes-detalle' },
+          h('td', { colSpan: 6 },
+            h('strong', null, (v.viajes || []).length + ' viaje(s) detectado(s) en el rango')
+          )
+        )
+      );
+      (v.viajes || []).forEach(function (viaje, i) {
+        filas.push(
+          h('tr', { key: 'viaje-' + i, className: 'viajes-detalle' },
+            h('td', { colSpan: 6 },
+              formatearFecha(viaje.inicio) + ' → ' + formatearFecha(viaje.fin) +
+              ' · ' + numero(viaje.kmRecorridos, 1) + ' km' +
+              ' · ' + numero(viaje.litrosSegunOdolitro, 1) + ' L' +
+              (viaje.rendimientoKmPorLitro !== null ? ' · ' + numero(viaje.rendimientoKmPorLitro, 2) + ' km/L' : '')
+            )
+          )
+        );
+      });
+    }
+
+    return filas;
+  }
+
+  // --- componente principal ---
+
+  function App() {
+    var empresasState = useState([]);
+    var empresas = empresasState[0], setEmpresas = empresasState[1];
+
+    var cargandoEmpresasState = useState(true);
+    var cargandoEmpresas = cargandoEmpresasState[0], setCargandoEmpresas = cargandoEmpresasState[1];
+
+    var errorEmpresasState = useState(null);
+    var errorEmpresas = errorEmpresasState[0], setErrorEmpresas = errorEmpresasState[1];
+
+    var empresaIdState = useState('');
+    var empresaId = empresaIdState[0], setEmpresaId = empresaIdState[1];
+
+    var placasSelState = useState({});
+    var placasSel = placasSelState[0], setPlacasSel = placasSelState[1];
+
+    var desdeState = useState('');
+    var desde = desdeState[0], setDesde = desdeState[1];
+
+    var hastaState = useState('');
+    var hasta = hastaState[0], setHasta = hastaState[1];
+
+    var cargandoResState = useState(false);
+    var cargandoRes = cargandoResState[0], setCargandoRes = cargandoResState[1];
+
+    var errorResState = useState(null);
+    var errorRes = errorResState[0], setErrorRes = errorResState[1];
+
+    var resultadoState = useState(null);
+    var resultado = resultadoState[0], setResultado = resultadoState[1];
+
+    var expandidoState = useState(null);
+    var expandidoPlaca = expandidoState[0], setExpandidoPlaca = expandidoState[1];
+
+    useEffect(function () {
+      setCargandoEmpresas(true);
+      fetch('/api/empresas')
+        .then(function (res) {
+          if (!res.ok) throw new Error('El servidor respondió ' + res.status);
+          return res.json();
+        })
+        .then(function (data) {
+          setEmpresas(data);
+          setCargandoEmpresas(false);
+        })
+        .catch(function (err) {
+          setErrorEmpresas('No se pudo cargar la lista de empresas: ' + err.message + '. Si el servidor estaba dormido, recarga la página en unos segundos.');
+          setCargandoEmpresas(false);
+        });
+    }, []);
+
+    var empresaActual = useMemo(function () {
+      return empresas.find(function (e) { return e.empresaId === empresaId; }) || null;
+    }, [empresas, empresaId]);
+
+    function handleEmpresaChange(e) {
+      setEmpresaId(e.target.value);
+      setPlacasSel({});
+      setResultado(null);
+      setErrorRes(null);
+    }
+
+    function toggleVehiculo(placa) {
+      setPlacasSel(function (prev) {
+        var next = Object.assign({}, prev);
+        next[placa] = !next[placa];
+        return next;
+      });
+    }
+
+    function seleccionarTodos() {
+      if (!empresaActual) return;
+      var next = {};
+      empresaActual.vehiculos.forEach(function (v) { next[v.license_plate || v.placa] = true; });
+      setPlacasSel(next);
+    }
+
+    function limpiarSeleccion() {
+      setPlacasSel({});
+    }
+
+    var placasElegidas = Object.keys(placasSel).filter(function (p) { return placasSel[p]; });
+
+    var rangoValido = true;
+    var mensajeRango = '';
+    if (desde && hasta) {
+      var dDesde = new Date(desde), dHasta = new Date(hasta);
+      if (dHasta <= dDesde) {
+        rangoValido = false;
+        mensajeRango = 'La fecha final debe ser posterior a la inicial.';
+      } else {
+        var dias = (dHasta - dDesde) / (1000 * 60 * 60 * 24);
+        if (dias > 5) {
+          rangoValido = false;
+          mensajeRango = 'El rango máximo permitido es de 5 días (elegiste ' + numero(dias, 1) + ').';
+        }
+      }
+    }
+
+    var puedeConsultar = empresaId && placasElegidas.length > 0 && desde && hasta && rangoValido && !cargandoRes;
+
+    function handleSubmit(e) {
+      e.preventDefault();
+      if (!puedeConsultar) return;
+
+      var desdeIso = aIsoDesdeLocal(desde);
+      var hastaIso = aIsoDesdeLocal(hasta);
+
+      var params = new URLSearchParams();
+      params.set('empresa', empresaId);
+      params.set('placas', placasElegidas.join(','));
+      params.set('desde', desdeIso);
+      params.set('hasta', hastaIso);
+
+      setCargandoRes(true);
+      setErrorRes(null);
+      setResultado(null);
+
+      fetch('/api/rendimiento?' + params.toString())
+        .then(function (res) {
+          return res.json().then(function (body) {
+            if (!res.ok) throw new Error(body.error || ('El servidor respondió ' + res.status));
+            return body;
+          });
+        })
+        .then(function (data) {
+          setResultado(data);
+          setCargandoRes(false);
+        })
+        .catch(function (err) {
+          setErrorRes(err.message);
+          setCargandoRes(false);
+        });
+    }
+
+    return h('div', null,
+      h('header', null,
+        h('h1', null, 'Rendimiento de Buses'),
+        h('p', null, 'Consulta rendimiento (km/L) y velocidad por empresa y vehículo')
+      ),
+      h('main', null,
+
+        // --- formulario ---
+        h('div', { className: 'card' },
+          h('h2', null, 'Consulta'),
+
+          errorEmpresas && h('div', { className: 'error-msg' }, errorEmpresas),
+          cargandoEmpresas && h('p', { className: 'cargando' }, 'Cargando empresas… (puede tardar unos segundos si el servidor estaba dormido)'),
+
+          !cargandoEmpresas && !errorEmpresas && h('form', { onSubmit: handleSubmit },
+            h('div', { className: 'fila' },
+              h('div', null,
+                h('label', null, 'Empresa'),
+                h('select', { value: empresaId, onChange: handleEmpresaChange },
+                  h('option', { value: '' }, '— Selecciona una empresa —'),
+                  empresas.map(function (e) {
+                    return h('option', { key: e.empresaId, value: e.empresaId }, e.nombre);
+                  })
+                )
+              ),
+              h('div', null)
+            ),
+
+            empresaActual && empresaActual.error && h('div', { className: 'aviso-msg' },
+              'No se pudo obtener la flota de esta empresa desde Copiloto: ' + empresaActual.error
+            ),
+
+            empresaActual && !empresaActual.error && h('div', { style: { marginBottom: '16px' } },
+              h('div', { className: 'top-vehiculos' },
+                h('label', { style: { marginBottom: 0 } }, 'Vehículos (' + placasElegidas.length + ' seleccionados)'),
+                h('div', null,
+                  h('button', { type: 'button', className: 'link-btn', onClick: seleccionarTodos }, 'Seleccionar todos'),
+                  h('span', null, ' · '),
+                  h('button', { type: 'button', className: 'link-btn', onClick: limpiarSeleccion }, 'Limpiar')
+                )
+              ),
+              h('div', { className: 'vehiculos-box' },
+                empresaActual.vehiculos.length === 0
+                  ? h('p', { className: 'cargando' }, 'Esta empresa no tiene vehículos registrados.')
+                  : empresaActual.vehiculos.map(function (v) {
+                      var placa = v.license_plate || v.placa;
+                      return h('label', { key: placa, className: 'vehiculo-item' },
+                        h('input', {
+                          type: 'checkbox',
+                          checked: !!placasSel[placa],
+                          onChange: function () { toggleVehiculo(placa); },
+                        }),
+                        placa
+                      );
+                    })
+              )
+            ),
+
+            h('div', { className: 'fila' },
+              h('div', null,
+                h('label', null, 'Desde'),
+                h('input', {
+                  type: 'datetime-local',
+                  value: desde,
+                  onChange: function (e) { setDesde(e.target.value); },
+                })
+              ),
+              h('div', null,
+                h('label', null, 'Hasta'),
+                h('input', {
+                  type: 'datetime-local',
+                  value: hasta,
+                  onChange: function (e) { setHasta(e.target.value); },
+                })
+              )
+            ),
+
+            mensajeRango && h('div', { className: 'error-msg' }, mensajeRango),
+
+            h('button', { type: 'submit', className: 'primario', disabled: !puedeConsultar },
+              cargandoRes ? 'Consultando…' : 'Ver rendimiento'
+            )
+          )
+        ),
+
+        errorRes && h('div', { className: 'error-msg' }, errorRes),
+
+        // --- resultados ---
+        resultado && h('div', { className: 'card' },
+          h('h2', null, 'Resultado: ' + (empresaActual ? empresaActual.nombre : resultado.empresa)),
+          h('p', { className: 'nota' },
+            formatearFecha(resultado.desde) + ' → ' + formatearFecha(resultado.hasta)
+          ),
+
+          h('div', { className: 'resumen-flota' },
+            h('div', { className: 'metrica' },
+              h('div', { className: 'valor' }, numero(resultado.flota.kmRecorridos, 1)),
+              h('div', { className: 'etiqueta' }, 'km totales (flota)')
+            ),
+            h('div', { className: 'metrica' },
+              h('div', { className: 'valor' }, numero(resultado.flota.litrosConsumidos, 1)),
+              h('div', { className: 'etiqueta' }, 'litros totales (flota)')
+            ),
+            h('div', { className: 'metrica' },
+              h('div', { className: 'valor' },
+                resultado.flota.rendimientoKmPorLitro === null ? '—' : numero(resultado.flota.rendimientoKmPorLitro, 2)
+              ),
+              h('div', { className: 'etiqueta' }, 'km/L (flota)')
+            ),
+            h('div', { className: 'metrica' },
+              h('div', { className: 'valor' },
+                resultado.flota.velocidadPromedio === null ? '—' : numero(resultado.flota.velocidadPromedio, 1)
+              ),
+              h('div', { className: 'etiqueta' }, 'km/h velocidad promedio')
+            ),
+            h('div', { className: 'metrica' },
+              h('div', { className: 'valor' }, formatearDuracion(resultado.flota.ralentiMinutos)),
+              h('div', { className: 'etiqueta' }, 'ralentí (flota)')
+            )
+          ),
+
+          h('h3', null, 'Por vehículo (haz clic en una fila para ver detalle de viajes)'),
+          h('table', null,
+            h('thead', null,
+              h('tr', null,
+                h('th', null, 'Placa'),
+                h('th', null, 'km'),
+                h('th', null, 'Litros'),
+                h('th', null, 'km/L'),
+                h('th', null, 'Ralentí'),
+                h('th', null, 'Avisos')
+              )
+            ),
+            h('tbody', null,
+              resultado.vehiculos.map(function (v) {
+                return h(FilaVehiculo, {
+                  key: v.placa,
+                  vehiculo: v,
+                  expandido: expandidoPlaca === v.placa,
+                  onToggle: function () {
+                    setExpandidoPlaca(expandidoPlaca === v.placa ? null : v.placa);
+                  },
+                });
+              })
+            )
+          ),
+
+          h('h3', null, 'Velocidad en el tiempo'),
+          h(GraficoVelocidad, { vehiculos: resultado.vehiculos }),
+          h('p', { className: 'nota' }, 'Los datos se muestrean para el gráfico si hay muchos puntos; los cálculos de rendimiento usan todos los registros.')
+        )
+      )
+    );
+  }
+
+  ReactDOM.createRoot(document.getElementById('root')).render(h(App));
+</script>
+</body>
+</html>
