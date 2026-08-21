@@ -209,6 +209,7 @@ function calcularRendimiento(eventos, { desde, hasta }) {
       litrosConsumidos: 0,
       rendimientoKmPorLitro: null,
       velocidadPromedio: null,
+      velocidadMaxima: null,
       muestrasVelocidad: 0,
       sumaVelocidad: 0,
       ralentiMinutos: 0,
@@ -267,11 +268,14 @@ function calcularRendimiento(eventos, { desde, hasta }) {
   const conduccionRentableMinutos = calcularConduccionRentableMinutos(enRango, advertencias);
   const conduccionNoRentableMinutos = calcularConduccionNoRentableMinutos(enRango, advertencias);
 
+  const velocidadMaxima = velocidadesValidas.length > 0 ? Math.max(...velocidadesValidas) : null;
+
   return {
     kmRecorridos: Number(kmTotal.toFixed(2)),
     litrosConsumidos: Number(litrosTotal.toFixed(2)),
     rendimientoKmPorLitro: rendimiento !== null ? Number(rendimiento.toFixed(3)) : null,
     velocidadPromedio,
+    velocidadMaxima,
     muestrasVelocidad,
     sumaVelocidad: Number(sumaVelocidad.toFixed(1)),
     ralentiMinutos,
@@ -351,11 +355,17 @@ function agregarFlota(resultadosPorVehiculo) {
   const conduccionRentableMinutosTotal = resultadosPorVehiculo.reduce((acc, r) => acc + (r.conduccionRentableMinutos || 0), 0);
   const conduccionNoRentableMinutosTotal = resultadosPorVehiculo.reduce((acc, r) => acc + (r.conduccionNoRentableMinutos || 0), 0);
 
+  const velocidadesMaximas = resultadosPorVehiculo
+    .map((r) => r.velocidadMaxima)
+    .filter((v) => typeof v === 'number' && !Number.isNaN(v));
+  const velocidadMaxima = velocidadesMaximas.length > 0 ? Math.max(...velocidadesMaximas) : null;
+
   return {
     kmRecorridos: Number(kmTotal.toFixed(2)),
     litrosConsumidos: Number(litrosTotal.toFixed(2)),
     rendimientoKmPorLitro: litrosTotal > 0 ? Number((kmTotal / litrosTotal).toFixed(3)) : null,
     velocidadPromedio: muestrasVelocidadTotal > 0 ? Number((sumaVelocidadTotal / muestrasVelocidadTotal).toFixed(1)) : null,
+    velocidadMaxima,
     ralentiMinutos: Number(ralentiMinutosTotal.toFixed(1)),
     conduccionRentableMinutos: Number(conduccionRentableMinutosTotal.toFixed(1)),
     conduccionNoRentableMinutos: Number(conduccionNoRentableMinutosTotal.toFixed(1)),
