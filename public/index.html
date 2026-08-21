@@ -4,74 +4,149 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Rendimiento de Buses</title>
-<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/2.47.0/iconfont/tabler-icons.min.css" />
 <style>
   :root {
-    --azul: #1d4ed8;
-    --azul-claro: #eff6ff;
+    --navy: #10151c;
+    --navy-2: #1a2129;
+    --verde: #1d9e75;
+    --verde-claro: #e1f5ee;
+    --verde-texto: #085041;
+    --ambar-claro: #faeeda;
+    --ambar-texto: #633806;
+    --azul-claro: #e6f1fb;
+    --azul-texto: #0c447c;
+    --rojo-claro: #fcebeb;
+    --rojo-texto: #791f1f;
     --gris: #6b7280;
     --gris-claro: #f3f4f6;
     --borde: #e5e7eb;
-    --verde: #15803d;
-    --rojo: #b91c1c;
+    --fondo: #f7f8fa;
   }
   * { box-sizing: border-box; }
   body {
     margin: 0;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    background: #fafafa;
+    background: var(--fondo);
     color: #111827;
   }
-  header {
-    background: var(--azul);
+  #root { display: flex; min-height: 100vh; }
+
+  /* --- sidebar --- */
+  aside {
+    width: 220px;
+    flex-shrink: 0;
+    background: var(--navy);
+    color: #a8b0bb;
+    padding: 20px 14px;
+  }
+  .marca {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 28px;
+    padding: 0 4px;
+  }
+  .marca-icono {
+    width: 32px;
+    height: 32px;
+    border-radius: 7px;
+    background: var(--verde);
+    display: flex;
+    align-items: center;
+    justify-content: center;
     color: white;
-    padding: 20px 24px;
+    font-size: 17px;
+    flex-shrink: 0;
   }
-  header h1 { margin: 0; font-size: 20px; }
-  header p { margin: 4px 0 0; font-size: 13px; opacity: 0.9; }
-  main {
-    max-width: 980px;
-    margin: 0 auto;
-    padding: 24px 16px 60px;
+  .marca-texto {
+    color: white;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.25;
   }
+  .marca-texto span { color: var(--verde); }
+  .nav-seccion {
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    color: #5b6472;
+    margin: 0 8px 8px;
+  }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 10px;
+    border-radius: 7px;
+    font-size: 13px;
+    background: var(--navy-2);
+    color: var(--verde);
+  }
+  .nav-item i { font-size: 16px; }
+
+  /* --- main --- */
+  main { flex: 1; padding: 24px 32px 60px; max-width: 1080px; }
+  .encabezado {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 20px;
+  }
+  .encabezado h1 { margin: 0; font-size: 19px; font-weight: 600; }
+  .encabezado p { margin: 3px 0 0; font-size: 13px; color: var(--gris); }
+  .fecha-hoy { font-size: 13px; color: var(--gris); padding-top: 3px; }
+
   .card {
     background: white;
     border: 1px solid var(--borde);
-    border-radius: 10px;
+    border-radius: 12px;
     padding: 20px;
     margin-bottom: 20px;
   }
+  h2 { font-size: 15px; font-weight: 600; margin: 0 0 14px; }
+  h3 { font-size: 13px; font-weight: 600; margin: 20px 0 10px; }
+
   label {
     display: block;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 600;
     color: #374151;
     margin-bottom: 6px;
   }
-  select, input[type="datetime-local"] {
+  select, input[type="date"], input[type="text"] {
     width: 100%;
     padding: 8px 10px;
     border: 1px solid var(--borde);
-    border-radius: 6px;
+    border-radius: 7px;
     font-size: 14px;
     background: white;
+    font-family: inherit;
   }
-  .fila {
+  .bloque { margin-bottom: 18px; }
+  .fila-hora {
+    display: grid;
+    grid-template-columns: 1fr 70px 12px 70px;
+    gap: 6px;
+    align-items: center;
+  }
+  .fila-hora .sep { text-align: center; color: var(--gris); font-weight: 600; }
+  .fila-fechas {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 16px;
-    margin-bottom: 16px;
   }
   @media (max-width: 640px) {
-    .fila { grid-template-columns: 1fr; }
+    .fila-fechas { grid-template-columns: 1fr; }
   }
+
   .vehiculos-box {
     max-height: 220px;
     overflow-y: auto;
     border: 1px solid var(--borde);
-    border-radius: 6px;
+    border-radius: 7px;
     padding: 10px 12px;
   }
   .vehiculo-item {
@@ -91,17 +166,17 @@
   .link-btn {
     background: none;
     border: none;
-    color: var(--azul);
+    color: var(--verde-texto);
     font-size: 13px;
     cursor: pointer;
     padding: 0;
   }
   button.primario {
-    background: var(--azul);
+    background: var(--navy);
     color: white;
     border: none;
     padding: 10px 20px;
-    border-radius: 6px;
+    border-radius: 7px;
     font-size: 14px;
     font-weight: 600;
     cursor: pointer;
@@ -111,80 +186,84 @@
     cursor: not-allowed;
   }
   .error-msg {
-    background: #fef2f2;
-    color: var(--rojo);
-    border: 1px solid #fecaca;
+    background: var(--rojo-claro);
+    color: var(--rojo-texto);
+    border: 1px solid #f0999966;
     padding: 10px 14px;
-    border-radius: 6px;
+    border-radius: 7px;
     font-size: 13px;
     margin-bottom: 16px;
   }
   .aviso-msg {
-    background: #fffbeb;
-    color: #92400e;
-    border: 1px solid #fde68a;
+    background: var(--ambar-claro);
+    color: var(--ambar-texto);
+    border: 1px solid #ef9f2766;
     padding: 10px 14px;
-    border-radius: 6px;
+    border-radius: 7px;
     font-size: 13px;
     margin-bottom: 16px;
   }
-  .cargando {
-    color: var(--gris);
-    font-size: 14px;
-  }
+  .cargando { color: var(--gris); font-size: 14px; }
+
   .resumen-flota {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
     gap: 12px;
     margin-bottom: 8px;
   }
-  @media (max-width: 640px) {
-    .resumen-flota { grid-template-columns: 1fr; }
+  @media (max-width: 900px) {
+    .resumen-flota { grid-template-columns: repeat(2, 1fr); }
   }
   .metrica {
-    background: var(--azul-claro);
-    border-radius: 8px;
-    padding: 14px;
-    text-align: center;
+    background: white;
+    border: 1px solid var(--borde);
+    border-radius: 10px;
+    padding: 12px 14px;
   }
-  .metrica .valor {
-    font-size: 22px;
-    font-weight: 700;
-    color: var(--azul);
+  .metrica-top { display: flex; justify-content: space-between; align-items: flex-start; }
+  .metrica-etiqueta { font-size: 12px; color: var(--gris); }
+  .metrica-icono {
+    width: 26px;
+    height: 26px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 14px;
   }
-  .metrica .etiqueta {
-    font-size: 12px;
-    color: var(--gris);
-    margin-top: 2px;
-  }
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 13px;
-  }
-  th, td {
+  .metrica .valor { font-size: 22px; font-weight: 600; margin-top: 8px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th {
     text-align: left;
-    padding: 8px 10px;
-    border-bottom: 1px solid var(--borde);
+    padding: 9px 14px;
+    background: var(--navy);
+    color: #a8b0bb;
+    font-weight: 600;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
   }
-  th { color: var(--gris); font-weight: 600; font-size: 12px; text-transform: uppercase; }
+  thead tr :first-child { border-radius: 8px 0 0 0; }
+  thead tr :last-child { border-radius: 0 8px 0 0; }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--borde); }
+  .tabla-wrap { border: 1px solid var(--borde); border-radius: 8px; overflow: hidden; }
   .placa-row { cursor: pointer; }
   .placa-row:hover { background: var(--gris-claro); }
-  .badge-warn {
+  .placa-celda { font-weight: 600; }
+  .pill {
     display: inline-block;
-    background: #fffbeb;
-    color: #92400e;
-    border: 1px solid #fde68a;
-    border-radius: 4px;
-    padding: 1px 6px;
     font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 5px;
+    font-weight: 500;
   }
-  .viajes-detalle {
-    background: var(--gris-claro);
-  }
-  .viajes-detalle td { padding: 4px 10px 4px 30px; font-size: 12px; }
-  h2 { font-size: 16px; margin: 0 0 12px; }
-  h3 { font-size: 14px; margin: 20px 0 10px; }
+  .pill-ok { background: #eaf3de; color: #173404; }
+  .pill-warn { background: var(--ambar-claro); color: var(--ambar-texto); }
+  .pill-muted { background: var(--gris-claro); color: var(--gris); }
+  .viajes-detalle { background: var(--gris-claro); }
+  .viajes-detalle td { padding: 4px 14px 4px 34px; font-size: 12px; }
   .chart-wrap { position: relative; height: 320px; margin-top: 10px; }
   .nota { font-size: 12px; color: var(--gris); margin-top: 8px; }
 </style>
@@ -203,7 +282,13 @@
   function formatearFecha(iso) {
     if (!iso) return '';
     var d = new Date(iso);
-    return d.toLocaleString('es-CL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    return d.toLocaleString('es-CL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
+  }
+
+  function formatearFechaHoy() {
+    var d = new Date();
+    var texto = d.toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    return texto.charAt(0).toUpperCase() + texto.slice(1);
   }
 
   function numero(n, decimales) {
@@ -229,12 +314,67 @@
     return out;
   }
 
-  function aIsoDesdeLocal(valorInput) {
-    // input datetime-local no trae zona horaria; se interpreta en hora local del navegador
-    if (!valorInput) return null;
-    var d = new Date(valorInput);
+  // combina un input date (YYYY-MM-DD) + hora (00-23) + minuto (00-59), en
+  // hora LOCAL del navegador, y devuelve el ISO string correspondiente (UTC).
+  function combinarFechaHora(fecha, hora, minuto) {
+    if (!fecha) return null;
+    var partes = fecha.split('-');
+    var d = new Date(
+      Number(partes[0]),
+      Number(partes[1]) - 1,
+      Number(partes[2]),
+      Number(hora),
+      Number(minuto),
+      0
+    );
     if (Number.isNaN(d.getTime())) return null;
     return d.toISOString();
+  }
+
+  var HORAS = [];
+  for (var hh = 0; hh < 24; hh++) HORAS.push(hh < 10 ? '0' + hh : '' + hh);
+  var MINUTOS = ['00', '15', '30', '45'];
+
+  // --- componente: selector de hora en formato 24hrs ---
+
+  function SelectorHora(props) {
+    return h('div', { className: 'fila-hora' },
+      h('div', null,
+        h('label', null, props.etiqueta),
+        h('input', {
+          type: 'date',
+          value: props.fecha,
+          onChange: function (e) { props.onFecha(e.target.value); },
+        })
+      ),
+      h('select', {
+        value: props.hora,
+        onChange: function (e) { props.onHora(e.target.value); },
+        'aria-label': 'Hora (' + props.etiqueta + ')',
+        style: { marginTop: '20px' },
+      }, HORAS.map(function (v) { return h('option', { key: v, value: v }, v); })),
+      h('div', { className: 'sep', style: { marginTop: '20px' } }, ':'),
+      h('select', {
+        value: props.minuto,
+        onChange: function (e) { props.onMinuto(e.target.value); },
+        'aria-label': 'Minutos (' + props.etiqueta + ')',
+        style: { marginTop: '20px' },
+      }, MINUTOS.map(function (v) { return h('option', { key: v, value: v }, v); }))
+    );
+  }
+
+  // --- componente: tarjeta de métrica ---
+
+  function Metrica(props) {
+    return h('div', { className: 'metrica' },
+      h('div', { className: 'metrica-top' },
+        h('span', { className: 'metrica-etiqueta' }, props.etiqueta),
+        h('div', { className: 'metrica-icono', style: { background: props.fondoIcono } },
+          h('i', { className: 'ti ti-' + props.icono, style: { color: props.colorIcono }, 'aria-hidden': 'true' })
+        )
+      ),
+      h('div', { className: 'valor' }, props.valor)
+    );
   }
 
   // --- componente: gráfico de velocidad (Chart.js, sin wrapper de React) ---
@@ -250,7 +390,7 @@
       }
 
       var datasets = props.vehiculos.map(function (v, idx) {
-        var colores = ['#1d4ed8', '#b91c1c', '#15803d', '#a16207', '#7c3aed', '#0891b2'];
+        var colores = ['#1d9e75', '#0c447c', '#633806', '#791f1f', '#534ab7', '#993556'];
         var color = colores[idx % colores.length];
         var puntos = muestrear(v.serieVelocidad, 150);
         return {
@@ -300,22 +440,30 @@
   function FilaVehiculo(props) {
     var v = props.vehiculo;
     var expandido = props.expandido;
+    var tieneAvisos = v.advertencias && v.advertencias.length > 0;
+
+    var pill;
+    if (tieneAvisos) {
+      pill = h('span', { className: 'pill pill-warn' }, v.advertencias.length + ' aviso(s)');
+    } else if (v.rendimientoKmPorLitro !== null) {
+      pill = h('span', { className: 'pill pill-ok' }, 'Sin novedades');
+    } else {
+      pill = h('span', { className: 'pill pill-muted' }, 'Sin datos');
+    }
 
     var filas = [
       h('tr', { key: 'main', className: 'placa-row', onClick: props.onToggle },
-        h('td', null, v.placa),
+        h('td', { className: 'placa-celda' }, v.placa),
         h('td', null, numero(v.kmRecorridos, 1)),
         h('td', null, numero(v.litrosConsumidos, 1)),
         h('td', null, v.rendimientoKmPorLitro === null ? '—' : numero(v.rendimientoKmPorLitro, 2)),
         h('td', null, formatearDuracion(v.ralentiMinutos)),
-        h('td', null, v.advertencias && v.advertencias.length > 0
-          ? h('span', { className: 'badge-warn' }, v.advertencias.length + ' aviso(s)')
-          : '—')
+        h('td', null, pill)
       ),
     ];
 
     if (expandido) {
-      if (v.advertencias && v.advertencias.length > 0) {
+      if (tieneAvisos) {
         v.advertencias.forEach(function (a, i) {
           filas.push(
             h('tr', { key: 'adv-' + i, className: 'viajes-detalle' },
@@ -366,11 +514,21 @@
     var placasSelState = useState({});
     var placasSel = placasSelState[0], setPlacasSel = placasSelState[1];
 
-    var desdeState = useState('');
-    var desde = desdeState[0], setDesde = desdeState[1];
+    // fecha/hora "desde", en formato 24hrs (hora y minuto van por separado)
+    var desdeFechaState = useState('');
+    var desdeFecha = desdeFechaState[0], setDesdeFecha = desdeFechaState[1];
+    var desdeHoraState = useState('00');
+    var desdeHora = desdeHoraState[0], setDesdeHora = desdeHoraState[1];
+    var desdeMinState = useState('00');
+    var desdeMin = desdeMinState[0], setDesdeMin = desdeMinState[1];
 
-    var hastaState = useState('');
-    var hasta = hastaState[0], setHasta = hastaState[1];
+    // fecha/hora "hasta"
+    var hastaFechaState = useState('');
+    var hastaFecha = hastaFechaState[0], setHastaFecha = hastaFechaState[1];
+    var hastaHoraState = useState('23');
+    var hastaHora = hastaHoraState[0], setHastaHora = hastaHoraState[1];
+    var hastaMinState = useState('45');
+    var hastaMin = hastaMinState[0], setHastaMin = hastaMinState[1];
 
     var cargandoResState = useState(false);
     var cargandoRes = cargandoResState[0], setCargandoRes = cargandoResState[1];
@@ -433,13 +591,16 @@
 
     var placasElegidas = Object.keys(placasSel).filter(function (p) { return placasSel[p]; });
 
+    var desdeIso = combinarFechaHora(desdeFecha, desdeHora, desdeMin);
+    var hastaIso = combinarFechaHora(hastaFecha, hastaHora, hastaMin);
+
     var rangoValido = true;
     var mensajeRango = '';
-    if (desde && hasta) {
-      var dDesde = new Date(desde), dHasta = new Date(hasta);
+    if (desdeIso && hastaIso) {
+      var dDesde = new Date(desdeIso), dHasta = new Date(hastaIso);
       if (dHasta <= dDesde) {
         rangoValido = false;
-        mensajeRango = 'La fecha final debe ser posterior a la inicial.';
+        mensajeRango = 'La fecha/hora final debe ser posterior a la inicial.';
       } else {
         var dias = (dHasta - dDesde) / (1000 * 60 * 60 * 24);
         if (dias > 5) {
@@ -449,14 +610,11 @@
       }
     }
 
-    var puedeConsultar = empresaId && placasElegidas.length > 0 && desde && hasta && rangoValido && !cargandoRes;
+    var puedeConsultar = empresaId && placasElegidas.length > 0 && desdeIso && hastaIso && rangoValido && !cargandoRes;
 
     function handleSubmit(e) {
       e.preventDefault();
       if (!puedeConsultar) return;
-
-      var desdeIso = aIsoDesdeLocal(desde);
-      var hastaIso = aIsoDesdeLocal(hasta);
 
       var params = new URLSearchParams();
       params.set('empresa', empresaId);
@@ -485,12 +643,31 @@
         });
     }
 
-    return h('div', null,
-      h('header', null,
-        h('h1', null, 'Rendimiento de Buses'),
-        h('p', null, 'Consulta rendimiento (km/L) y velocidad por empresa y vehículo')
+    return h('div', { style: { display: 'flex', width: '100%' } },
+
+      // --- sidebar ---
+      h('aside', null,
+        h('div', { className: 'marca' },
+          h('div', { className: 'marca-icono' }, h('i', { className: 'ti ti-bus', 'aria-hidden': 'true' })),
+          h('div', { className: 'marca-texto' }, 'Connect', h('br'), h('span', null, 'Buses'))
+        ),
+        h('div', { className: 'nav-seccion' }, 'PRINCIPAL'),
+        h('div', { className: 'nav-item' },
+          h('i', { className: 'ti ti-gauge', 'aria-hidden': 'true' }),
+          'Rendimiento'
+        )
       ),
+
+      // --- contenido principal ---
       h('main', null,
+
+        h('div', { className: 'encabezado' },
+          h('div', null,
+            h('h1', null, 'Rendimiento de buses'),
+            h('p', null, 'Consulta rendimiento (km/L) y velocidad por empresa y vehículo')
+          ),
+          h('div', { className: 'fecha-hoy' }, formatearFechaHoy())
+        ),
 
         // --- formulario ---
         h('div', { className: 'card' },
@@ -500,26 +677,26 @@
           cargandoEmpresas && h('p', { className: 'cargando' }, 'Cargando empresas… (puede tardar unos segundos si el servidor estaba dormido)'),
 
           !cargandoEmpresas && !errorEmpresas && h('form', { onSubmit: handleSubmit },
-            h('div', { className: 'fila' },
-              h('div', null,
-                h('label', null, 'Empresa'),
-                h('select', { value: empresaId, onChange: handleEmpresaChange },
-                  h('option', { value: '' }, '— Selecciona una empresa —'),
-                  empresas.map(function (e) {
-                    return h('option', { key: e.empresaId, value: e.empresaId }, e.nombre);
-                  })
-                )
-              ),
-              h('div', null)
+
+            // 1. buscador de empresas
+            h('div', { className: 'bloque' },
+              h('label', null, 'Empresa'),
+              h('select', { value: empresaId, onChange: handleEmpresaChange },
+                h('option', { value: '' }, '— Selecciona una empresa —'),
+                empresas.map(function (e) {
+                  return h('option', { key: e.empresaId, value: e.empresaId }, e.nombre);
+                })
+              )
             ),
 
             empresaActual && empresaActual.error && h('div', { className: 'aviso-msg' },
               'No se pudo obtener la flota de esta empresa desde Copiloto: ' + empresaActual.error
             ),
 
-            empresaActual && !empresaActual.error && h('div', { style: { marginBottom: '16px' } },
+            // 2. selección de unidad(es)
+            empresaActual && !empresaActual.error && h('div', { className: 'bloque' },
               h('div', { className: 'top-vehiculos' },
-                h('label', { style: { marginBottom: 0 } }, 'Vehículos (' + placasElegidas.length + ' seleccionados)'),
+                h('label', { style: { marginBottom: 0 } }, 'Unidad(es) (' + placasElegidas.length + ' seleccionadas)'),
                 h('div', null,
                   h('button', { type: 'button', className: 'link-btn', onClick: seleccionarTodos }, 'Seleccionar todos'),
                   h('span', null, ' · '),
@@ -543,23 +720,20 @@
               )
             ),
 
-            h('div', { className: 'fila' },
-              h('div', null,
-                h('label', null, 'Desde'),
-                h('input', {
-                  type: 'datetime-local',
-                  value: desde,
-                  onChange: function (e) { setDesde(e.target.value); },
-                })
-              ),
-              h('div', null,
-                h('label', null, 'Hasta'),
-                h('input', {
-                  type: 'datetime-local',
-                  value: hasta,
-                  onChange: function (e) { setHasta(e.target.value); },
-                })
-              )
+            // 3. fecha de inicio y fin, con hora en formato 24hrs
+            h('div', { className: 'bloque fila-fechas' },
+              h(SelectorHora, {
+                etiqueta: 'Desde',
+                fecha: desdeFecha, onFecha: setDesdeFecha,
+                hora: desdeHora, onHora: setDesdeHora,
+                minuto: desdeMin, onMinuto: setDesdeMin,
+              }),
+              h(SelectorHora, {
+                etiqueta: 'Hasta',
+                fecha: hastaFecha, onFecha: setHastaFecha,
+                hora: hastaHora, onHora: setHastaHora,
+                minuto: hastaMin, onMinuto: setHastaMin,
+              })
             ),
 
             mensajeRango && h('div', { className: 'error-msg' }, mensajeRango),
@@ -576,59 +750,59 @@
         resultado && h('div', { className: 'card' },
           h('h2', null, 'Resultado: ' + (empresaActual ? empresaActual.nombre : resultado.empresa)),
           h('p', { className: 'nota' },
-            formatearFecha(resultado.desde) + ' → ' + formatearFecha(resultado.hasta)
+            formatearFecha(resultado.desde) + ' → ' + formatearFecha(resultado.hasta) + ' (hora local, formato 24 hrs)'
           ),
 
           h('div', { className: 'resumen-flota' },
-            h('div', { className: 'metrica' },
-              h('div', { className: 'valor' }, numero(resultado.flota.kmRecorridos, 1)),
-              h('div', { className: 'etiqueta' }, 'km totales (flota)')
-            ),
-            h('div', { className: 'metrica' },
-              h('div', { className: 'valor' }, numero(resultado.flota.litrosConsumidos, 1)),
-              h('div', { className: 'etiqueta' }, 'litros totales (flota)')
-            ),
-            h('div', { className: 'metrica' },
-              h('div', { className: 'valor' },
-                resultado.flota.rendimientoKmPorLitro === null ? '—' : numero(resultado.flota.rendimientoKmPorLitro, 2)
-              ),
-              h('div', { className: 'etiqueta' }, 'km/L (flota)')
-            ),
-            h('div', { className: 'metrica' },
-              h('div', { className: 'valor' },
-                resultado.flota.velocidadPromedio === null ? '—' : numero(resultado.flota.velocidadPromedio, 1)
-              ),
-              h('div', { className: 'etiqueta' }, 'km/h velocidad promedio')
-            ),
-            h('div', { className: 'metrica' },
-              h('div', { className: 'valor' }, formatearDuracion(resultado.flota.ralentiMinutos)),
-              h('div', { className: 'etiqueta' }, 'ralentí (flota)')
-            )
+            h(Metrica, {
+              etiqueta: 'km totales (flota)', valor: numero(resultado.flota.kmRecorridos, 1),
+              icono: 'road', fondoIcono: 'var(--verde-claro)', colorIcono: 'var(--verde-texto)',
+            }),
+            h(Metrica, {
+              etiqueta: 'litros totales (flota)', valor: numero(resultado.flota.litrosConsumidos, 1),
+              icono: 'droplet', fondoIcono: 'var(--ambar-claro)', colorIcono: 'var(--ambar-texto)',
+            }),
+            h(Metrica, {
+              etiqueta: 'km/L (flota)',
+              valor: resultado.flota.rendimientoKmPorLitro === null ? '—' : numero(resultado.flota.rendimientoKmPorLitro, 2),
+              icono: 'chart-line', fondoIcono: 'var(--azul-claro)', colorIcono: 'var(--azul-texto)',
+            }),
+            h(Metrica, {
+              etiqueta: 'km/h velocidad promedio',
+              valor: resultado.flota.velocidadPromedio === null ? '—' : numero(resultado.flota.velocidadPromedio, 1),
+              icono: 'gauge', fondoIcono: 'var(--azul-claro)', colorIcono: 'var(--azul-texto)',
+            }),
+            h(Metrica, {
+              etiqueta: 'ralentí (flota)', valor: formatearDuracion(resultado.flota.ralentiMinutos),
+              icono: 'clock-pause', fondoIcono: 'var(--rojo-claro)', colorIcono: 'var(--rojo-texto)',
+            })
           ),
 
           h('h3', null, 'Por vehículo (haz clic en una fila para ver detalle de viajes)'),
-          h('table', null,
-            h('thead', null,
-              h('tr', null,
-                h('th', null, 'Placa'),
-                h('th', null, 'km'),
-                h('th', null, 'Litros'),
-                h('th', null, 'km/L'),
-                h('th', null, 'Ralentí'),
-                h('th', null, 'Avisos')
+          h('div', { className: 'tabla-wrap' },
+            h('table', null,
+              h('thead', null,
+                h('tr', null,
+                  h('th', null, 'Placa'),
+                  h('th', null, 'km'),
+                  h('th', null, 'Litros'),
+                  h('th', null, 'km/L'),
+                  h('th', null, 'Ralentí'),
+                  h('th', null, 'Estado')
+                )
+              ),
+              h('tbody', null,
+                resultado.vehiculos.map(function (v) {
+                  return h(FilaVehiculo, {
+                    key: v.placa,
+                    vehiculo: v,
+                    expandido: expandidoPlaca === v.placa,
+                    onToggle: function () {
+                      setExpandidoPlaca(expandidoPlaca === v.placa ? null : v.placa);
+                    },
+                  });
+                })
               )
-            ),
-            h('tbody', null,
-              resultado.vehiculos.map(function (v) {
-                return h(FilaVehiculo, {
-                  key: v.placa,
-                  vehiculo: v,
-                  expandido: expandidoPlaca === v.placa,
-                  onToggle: function () {
-                    setExpandidoPlaca(expandidoPlaca === v.placa ? null : v.placa);
-                  },
-                });
-              })
             )
           ),
 
