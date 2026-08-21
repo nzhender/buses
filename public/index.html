@@ -459,6 +459,7 @@
         h('td', null, v.rendimientoKmPorLitro === null ? '—' : numero(v.rendimientoKmPorLitro, 2)),
         h('td', null, formatearDuracion(v.ralentiMinutos)),
         h('td', null, formatearDuracion(v.conduccionRentableMinutos)),
+        h('td', null, formatearDuracion(v.conduccionNoRentableMinutos)),
         h('td', null, pill)
       ),
     ];
@@ -468,14 +469,14 @@
         v.advertencias.forEach(function (a, i) {
           filas.push(
             h('tr', { key: 'adv-' + i, className: 'viajes-detalle' },
-              h('td', { colSpan: 7 }, '⚠ ' + a)
+              h('td', { colSpan: 8 }, '⚠ ' + a)
             )
           );
         });
       }
       filas.push(
         h('tr', { key: 'viajes-header', className: 'viajes-detalle' },
-          h('td', { colSpan: 7 },
+          h('td', { colSpan: 8 },
             h('strong', null, (v.viajes || []).length + ' viaje(s) detectado(s) en el rango')
           )
         )
@@ -483,7 +484,7 @@
       (v.viajes || []).forEach(function (viaje, i) {
         filas.push(
           h('tr', { key: 'viaje-' + i, className: 'viajes-detalle' },
-            h('td', { colSpan: 7 },
+            h('td', { colSpan: 8 },
               formatearFecha(viaje.inicio) + ' → ' + formatearFecha(viaje.fin) +
               ' · ' + numero(viaje.kmRecorridos, 1) + ' km' +
               ' · ' + numero(viaje.litrosSegunOdolitro, 1) + ' L' +
@@ -780,6 +781,10 @@
             h(Metrica, {
               etiqueta: 'conducción rentable (flota)', valor: formatearDuracion(resultado.flota.conduccionRentableMinutos),
               icono: 'leaf', fondoIcono: 'var(--verde-claro)', colorIcono: 'var(--verde-texto)',
+            }),
+            h(Metrica, {
+              etiqueta: 'conducción no rentable (flota)', valor: formatearDuracion(resultado.flota.conduccionNoRentableMinutos),
+              icono: 'alert-triangle', fondoIcono: 'var(--rojo-claro)', colorIcono: 'var(--rojo-texto)',
             })
           ),
 
@@ -794,6 +799,7 @@
                   h('th', null, 'km/L'),
                   h('th', null, 'Ralentí'),
                   h('th', null, 'Cond. rentable'),
+                  h('th', null, 'Cond. no rentable'),
                   h('th', null, 'Estado')
                 )
               ),
