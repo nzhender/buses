@@ -264,6 +264,33 @@
   .pill-muted { background: var(--gris-claro); color: var(--gris); }
   .viajes-detalle { background: var(--gris-claro); }
   .viajes-detalle td { padding: 4px 14px 4px 34px; font-size: 12px; }
+  .tabla-viajes {
+    width: 100%;
+    margin-top: 6px;
+    border-collapse: collapse;
+    font-size: 12px;
+    background: white;
+    border: 1px solid var(--borde);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .tabla-viajes th {
+    text-align: left;
+    padding: 6px 10px;
+    background: var(--fondo);
+    color: var(--gris);
+    font-weight: 600;
+    font-size: 10px;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--borde);
+  }
+  .tabla-viajes td {
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--borde);
+    color: #111827;
+  }
+  .tabla-viajes tr:last-child td { border-bottom: none; }
   .chart-wrap { position: relative; height: 320px; margin-top: 10px; }
   .nota { font-size: 12px; color: var(--gris); margin-top: 8px; }
 </style>
@@ -283,6 +310,18 @@
     if (!iso) return '';
     var d = new Date(iso);
     return d.toLocaleString('es-CL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
+  }
+
+  function formatearSoloFecha(iso) {
+    if (!iso) return '';
+    var d = new Date(iso);
+    return d.toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  }
+
+  function formatearSoloHora(iso) {
+    if (!iso) return '';
+    var d = new Date(iso);
+    return d.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', hour12: false });
   }
 
   function formatearFechaHoy() {
@@ -478,22 +517,36 @@
       filas.push(
         h('tr', { key: 'viajes-header', className: 'viajes-detalle' },
           h('td', { colSpan: 9 },
-            h('strong', null, (v.viajes || []).length + ' viaje(s) detectado(s) en el rango')
+            h('div', { style: { padding: '6px 0' } },
+              h('strong', null, (v.viajes || []).length + ' viaje(s) detectado(s) en el rango'),
+              (v.viajes || []).length > 0 && h('table', { className: 'tabla-viajes' },
+                h('thead', null,
+                  h('tr', null,
+                    h('th', null, 'Fecha'),
+                    h('th', null, 'Inicio'),
+                    h('th', null, 'Término'),
+                    h('th', null, 'km recorridos'),
+                    h('th', null, 'Litros consumidos'),
+                    h('th', null, 'Rendimiento')
+                  )
+                ),
+                h('tbody', null,
+                  (v.viajes || []).map(function (viaje, i) {
+                    return h('tr', { key: 'viaje-' + i },
+                      h('td', null, formatearSoloFecha(viaje.inicio)),
+                      h('td', null, formatearSoloHora(viaje.inicio)),
+                      h('td', null, formatearSoloHora(viaje.fin)),
+                      h('td', null, numero(viaje.kmRecorridos, 1)),
+                      h('td', null, numero(viaje.litrosSegunOdolitro, 1)),
+                      h('td', null, viaje.rendimientoKmPorLitro !== null ? numero(viaje.rendimientoKmPorLitro, 2) + ' km/L' : '—')
+                    );
+                  })
+                )
+              )
+            )
           )
         )
       );
-      (v.viajes || []).forEach(function (viaje, i) {
-        filas.push(
-          h('tr', { key: 'viaje-' + i, className: 'viajes-detalle' },
-            h('td', { colSpan: 9 },
-              formatearFecha(viaje.inicio) + ' → ' + formatearFecha(viaje.fin) +
-              ' · ' + numero(viaje.kmRecorridos, 1) + ' km' +
-              ' · ' + numero(viaje.litrosSegunOdolitro, 1) + ' L' +
-              (viaje.rendimientoKmPorLitro !== null ? ' · ' + numero(viaje.rendimientoKmPorLitro, 2) + ' km/L' : '')
-            )
-          )
-        );
-      });
     }
 
     return filas;
