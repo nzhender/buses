@@ -2,7 +2,18 @@
 
 const copilotoClient = require('./copilotoClient');
 const config = require('./config');
-const { calcularRendimiento, calcularRendimientoPorViaje, agregarFlota } = require('./rendimiento');
+const {
+  calcularRendimiento,
+  calcularRendimientoPorViaje,
+  agregarFlota,
+  calcularMejorDia,
+  calcularMejorViaje,
+} = require('./rendimiento');
+
+// Mínimo de km para que un viaje individual califique como candidato a
+// "mejor viaje" del comparativo de flota (evita que viajes muy cortos, con
+// km/L poco representativo, ganen el destacado). Definido con el usuario.
+const KM_MINIMO_MEJOR_VIAJE = 50;
 
 const MAX_DIAS = 5;
 
@@ -64,13 +75,49 @@ async function obtenerRendimiento({ empresa, placas, desde, hasta }) {
         .filter((e) => e.gps_utc_time)
         .map((e) => ({ t: e.gps_utc_time, v: e.speed }));
 
-      return { placa, ...rendimiento, viajes, serieVelocidad };
+      // eventos crudos se guardan temporalmente para el comparativo de
+      // flota (mejor día / mejor viaje); se descartan antes de responder,
+      // no deben viajar completos en la respuesta de la API.
+      return { placa, eventos, ...rendimiento, viajes, serieVelocidad };
     })
   );
 
-  const flota = agregarFlota(resultadosPorVehiculo);
+  const eventosPorVehiculo = resultadosPorVehiculo.map((r) => ({ placa: r.placa, eventos: r.eventos }));
 
-  return { empresa, desde, hasta, vehiculos: resultadosPorVehiculo, flota };
+  const mejorDia = calcularMejorDia(eventosPorVehiculo, { desde, hasta });
+  const mejorViaje = calcularMejorViaje(eventosPorVehiculo, { desde, hasta, kmMinimo: KM_MINIMO_MEJOR_VIAJE });
+
+  const candidatosMejorVehiculo = resultadosPorVehiculo.filter((r) => r.rendimientoKmPorLitro !== null);
+  const mejorVehiculoRaw = candidatosMejorVehiculo.length > 0
+    ? candidatosMejorVehiculo.reduce((a, b) => (b.rendimientoKmPorLitro > a.rendimientoKmPorLitro ? b : a))
+    : null;
+  const mejorVehiculo = mejorVehiculoRaw
+    ? {
+        placa: mejorVehiculoRaw.placa,
+        kmRecorridos: mejorVehiculoRaw.kmRecorridos,
+        litrosConsumidos: mejorVehiculoRaw.litrosConsumidos,
+        rendimientoKmPorLitro: mejorVehiculoRaw.rendimientoKmPorLitro,
+      }
+    : null;
+
+  // resultadosLimpios: mismo array de siempre, sin el campo eventos (crudo).
+  const resultadosLimpios = resultadosPorVehiculo.map(({ eventos, ...resto }) => resto);
+
+  const flota = agregarFlota(resultadosLimpios);
+
+  return {
+    empresa,
+    desde,
+    hasta,
+    vehiculos: resultadosLimpios,
+    flota,
+    comparativo: {
+      mejorDia,
+      mejorVehiculo,
+      mejorViaje,
+      kmMinimoMejorViaje: KM_MINIMO_MEJOR_VIAJE,
+    },
+  };
 }
 
 module.exports = { obtenerRendimiento, ErrorValidacion };
