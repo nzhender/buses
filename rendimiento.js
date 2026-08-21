@@ -253,6 +253,48 @@ function filtrarPorRango(eventos, desde, hasta) {
  *   advertencias: string[]
  * }}
  */
+/**
+ * Suma km recorridos y litros consumidos de una lista de eventos YA
+ * ordenados y filtrados (de UN vehículo), detectando resets de contador
+ * (odometer/odoliter bajan en vez de subir) y partiendo el cálculo en
+ * segmentos para no arrastrar el error de un reinicio de equipo. Compartida
+ * entre calcularRendimiento (rango completo) y calcularMejorDia (por día).
+ */
+function calcularKmYLitros(enRango, advertencias) {
+  if (enRango.length === 0) return { kmTotal: 0, litrosTotal: 0, segmentos: 0 };
+
+  let kmTotal = 0;
+  let litrosTotal = 0;
+  let segmentos = 1;
+  let inicioSegmento = enRango[0];
+
+  for (let i = 1; i < enRango.length; i++) {
+    const anterior = enRango[i - 1];
+    const actual = enRango[i];
+
+    const resetOdometro = actual.odometer < anterior.odometer;
+    const resetOdolitro = actual.odoliter < anterior.odoliter;
+
+    if (resetOdometro || resetOdolitro) {
+      kmTotal += anterior.odometer - inicioSegmento.odometer;
+      litrosTotal += anterior.odoliter - inicioSegmento.odoliter;
+      if (advertencias) {
+        advertencias.push(
+          `Reset de contador detectado en ${actual.gps_utc_time} (posible cambio de equipo o reinicio de firmware).`
+        );
+      }
+      inicioSegmento = actual;
+      segmentos += 1;
+    }
+  }
+
+  const ultimo = enRango[enRango.length - 1];
+  kmTotal += ultimo.odometer - inicioSegmento.odometer;
+  litrosTotal += ultimo.odoliter - inicioSegmento.odoliter;
+
+  return { kmTotal, litrosTotal, segmentos };
+}
+
 function calcularRendimiento(eventos, { desde, hasta }) {
   const advertencias = [];
   const enRango = filtrarPorRango(ordenarPorTiempo(eventos), desde, hasta);
@@ -279,32 +321,7 @@ function calcularRendimiento(eventos, { desde, hasta }) {
     };
   }
 
-  let kmTotal = 0;
-  let litrosTotal = 0;
-  let segmentos = 1;
-  let inicioSegmento = enRango[0];
-
-  for (let i = 1; i < enRango.length; i++) {
-    const anterior = enRango[i - 1];
-    const actual = enRango[i];
-
-    const resetOdometro = actual.odometer < anterior.odometer;
-    const resetOdolitro = actual.odoliter < anterior.odoliter;
-
-    if (resetOdometro || resetOdolitro) {
-      kmTotal += anterior.odometer - inicioSegmento.odometer;
-      litrosTotal += anterior.odoliter - inicioSegmento.odoliter;
-      advertencias.push(
-        `Reset de contador detectado en ${actual.gps_utc_time} (posible cambio de equipo o reinicio de firmware).`
-      );
-      inicioSegmento = actual;
-      segmentos += 1;
-    }
-  }
-
-  const ultimo = enRango[enRango.length - 1];
-  kmTotal += ultimo.odometer - inicioSegmento.odometer;
-  litrosTotal += ultimo.odoliter - inicioSegmento.odoliter;
+  const { kmTotal, litrosTotal, segmentos } = calcularKmYLitros(enRango, advertencias);
 
   const rendimiento = litrosTotal > 0 ? kmTotal / litrosTotal : null;
   if (litrosTotal <= 0) {
@@ -344,7 +361,7 @@ function calcularRendimiento(eventos, { desde, hasta }) {
     muestras: enRango.length,
     segmentos,
     primerRegistro: enRango[0].gps_utc_time,
-    ultimoRegistro: ultimo.gps_utc_time,
+    ultimoRegistro: enRango[enRango.length - 1].gps_utc_time,
     advertencias,
   };
 }
@@ -437,8 +454,98 @@ function agregarFlota(resultadosPorVehiculo) {
   };
 }
 
+/**
+ * Clave de agrupación por día calendario, a partir del timestamp UTC del
+ * evento (los primeros 10 caracteres de un ISO 8601 son 'YYYY-MM-DD').
+ * Nota: agrupa por fecha UTC, no por fecha local de Chile — en el borde de
+ * medianoche un viaje podría quedar contado en el día "equivocado" en hora
+ * local, pero es consistente y suficiente para comparar días entre sí.
+ */
+function claveDia(evento) {
+  return evento.gps_utc_time.slice(0, 10);
+}
+
+/**
+ * "Mejor día": cruza TODOS los vehículos seleccionados, agrupa sus eventos
+ * por día calendario, suma km y litros de todos los vehículos ese día, y
+ * devuelve el día con mejor km/L de flota. Días sin consumo de combustible
+ * registrado no califican (rendimiento indefinido).
+ *
+ * @param {Array<{placa: string, eventos: Array<Object>}>} eventosPorVehiculo
+ * @returns {{fecha: string, kmRecorridos: number, litrosConsumidos: number, rendimientoKmPorLitro: number} | null}
+ */
+function calcularMejorDia(eventosPorVehiculo, { desde, hasta }) {
+  const acumuladoPorDia = {};
+
+  eventosPorVehiculo.forEach(({ eventos }) => {
+    const enRango = filtrarPorRango(ordenarPorTiempo(eventos), desde, hasta);
+
+    const eventosPorDiaDeEsteVehiculo = {};
+    enRango.forEach((evento) => {
+      const dia = claveDia(evento);
+      if (!eventosPorDiaDeEsteVehiculo[dia]) eventosPorDiaDeEsteVehiculo[dia] = [];
+      eventosPorDiaDeEsteVehiculo[dia].push(evento);
+    });
+
+    Object.keys(eventosPorDiaDeEsteVehiculo).forEach((dia) => {
+      // calcularKmYLitros necesita >=1 evento para dar un delta con sentido;
+      // con un solo evento en el día no hay delta que calcular, se omite.
+      if (eventosPorDiaDeEsteVehiculo[dia].length < 2) return;
+      const { kmTotal, litrosTotal } = calcularKmYLitros(eventosPorDiaDeEsteVehiculo[dia]);
+      if (!acumuladoPorDia[dia]) acumuladoPorDia[dia] = { kmTotal: 0, litrosTotal: 0 };
+      acumuladoPorDia[dia].kmTotal += kmTotal;
+      acumuladoPorDia[dia].litrosTotal += litrosTotal;
+    });
+  });
+
+  let mejor = null;
+  Object.keys(acumuladoPorDia).forEach((dia) => {
+    const { kmTotal, litrosTotal } = acumuladoPorDia[dia];
+    if (litrosTotal <= 0) return;
+    const rendimientoKmPorLitro = kmTotal / litrosTotal;
+    if (!mejor || rendimientoKmPorLitro > mejor.rendimientoKmPorLitro) {
+      mejor = {
+        fecha: dia,
+        kmRecorridos: Number(kmTotal.toFixed(2)),
+        litrosConsumidos: Number(litrosTotal.toFixed(2)),
+        rendimientoKmPorLitro: Number(rendimientoKmPorLitro.toFixed(3)),
+      };
+    }
+  });
+
+  return mejor;
+}
+
+/**
+ * "Mejor viaje": cruza TODOS los vehículos seleccionados y todos sus viajes
+ * individuales (ver calcularRendimientoPorViaje), y devuelve el de mejor
+ * km/L entre los que cumplen un mínimo de kilómetros — para no premiar
+ * viajes muy cortos donde el km/L es poco representativo (ruido de datos).
+ *
+ * @param {Array<{placa: string, eventos: Array<Object>}>} eventosPorVehiculo
+ * @param {{desde: string, hasta: string, kmMinimo: number}} opciones
+ */
+function calcularMejorViaje(eventosPorVehiculo, { desde, hasta, kmMinimo }) {
+  let mejor = null;
+
+  eventosPorVehiculo.forEach(({ placa, eventos }) => {
+    const viajes = calcularRendimientoPorViaje(eventos, { desde, hasta });
+    viajes.forEach((viaje) => {
+      if (viaje.kmRecorridos < kmMinimo) return;
+      if (viaje.rendimientoKmPorLitro === null) return;
+      if (!mejor || viaje.rendimientoKmPorLitro > mejor.rendimientoKmPorLitro) {
+        mejor = Object.assign({ placa }, viaje);
+      }
+    });
+  });
+
+  return mejor;
+}
+
 module.exports = {
   calcularRendimiento,
   calcularRendimientoPorViaje,
   agregarFlota,
+  calcularMejorDia,
+  calcularMejorViaje,
 };
