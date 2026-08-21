@@ -214,6 +214,47 @@
   @media (max-width: 900px) {
     .resumen-flota { grid-template-columns: repeat(2, 1fr); }
   }
+  .comparativo {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+  @media (max-width: 900px) {
+    .comparativo { grid-template-columns: 1fr; }
+  }
+  .comparativo-card {
+    background: white;
+    border: 1px solid var(--borde);
+    border-radius: 12px;
+    padding: 16px;
+  }
+  .comparativo-top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .comparativo-icono {
+    width: 26px;
+    height: 26px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+  .comparativo-etiqueta { font-size: 12px; color: var(--gris); }
+  .comparativo-valor { font-size: 20px; font-weight: 600; }
+  .comparativo-sub { font-size: 13px; color: var(--gris); margin-top: 4px; }
+  .comparativo-detalle {
+    font-size: 12px;
+    color: #9ca3af;
+    margin-top: 8px;
+    border-top: 1px solid var(--borde);
+    padding-top: 8px;
+  }
   .metrica {
     background: white;
     border: 1px solid var(--borde);
@@ -324,6 +365,15 @@
     return d.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', hour12: false });
   }
 
+  // formatea una clave de día 'YYYY-MM-DD' (sin componente de hora) a una
+  // fecha legible, sin desfases de zona horaria por interpretarla como UTC.
+  function formatearDiaYMD(fechaYMD) {
+    if (!fechaYMD) return '';
+    var partes = fechaYMD.split('-');
+    var d = new Date(Number(partes[0]), Number(partes[1]) - 1, Number(partes[2]));
+    return d.toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' });
+  }
+
   function formatearFechaHoy() {
     var d = new Date();
     var texto = d.toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
@@ -413,6 +463,23 @@
         )
       ),
       h('div', { className: 'valor' }, props.valor)
+    );
+  }
+
+  // --- componente: tarjeta del cuadro comparativo (mejor día / mejor
+  // vehículo / mejor viaje) ---
+
+  function TarjetaComparativa(props) {
+    return h('div', { className: 'comparativo-card' },
+      h('div', { className: 'comparativo-top' },
+        h('div', { className: 'comparativo-icono', style: { background: props.fondoIcono } },
+          h('i', { className: 'ti ti-' + props.icono, style: { color: props.colorIcono }, 'aria-hidden': 'true' })
+        ),
+        h('span', { className: 'comparativo-etiqueta' }, props.etiqueta)
+      ),
+      h('div', { className: 'comparativo-valor' }, props.valor),
+      props.sub && h('div', { className: 'comparativo-sub' }, props.sub),
+      h('div', { className: 'comparativo-detalle' }, props.detalle)
     );
   }
 
@@ -811,6 +878,51 @@
             formatearFecha(resultado.desde) + ' → ' + formatearFecha(resultado.hasta) + ' (hora local, formato 24 hrs)'
           ),
 
+          h('h3', { style: { marginTop: 0 } }, 'Comparativo de flota'),
+          h('div', { className: 'comparativo' },
+            resultado.comparativo && resultado.comparativo.mejorDia
+              ? h(TarjetaComparativa, {
+                  etiqueta: 'Mejor día',
+                  icono: 'calendar-stats', fondoIcono: 'var(--azul-claro)', colorIcono: 'var(--azul-texto)',
+                  valor: formatearDiaYMD(resultado.comparativo.mejorDia.fecha),
+                  sub: numero(resultado.comparativo.mejorDia.rendimientoKmPorLitro, 2) + ' km/L',
+                  detalle: numero(resultado.comparativo.mejorDia.kmRecorridos, 1) + ' km · ' + numero(resultado.comparativo.mejorDia.litrosConsumidos, 1) + ' L (toda la flota)',
+                })
+              : h(TarjetaComparativa, {
+                  etiqueta: 'Mejor día',
+                  icono: 'calendar-stats', fondoIcono: 'var(--gris-claro)', colorIcono: 'var(--gris)',
+                  valor: '—', detalle: 'Sin datos suficientes en el rango.',
+                }),
+            resultado.comparativo && resultado.comparativo.mejorVehiculo
+              ? h(TarjetaComparativa, {
+                  etiqueta: 'Mejor vehículo',
+                  icono: 'trophy', fondoIcono: 'var(--verde-claro)', colorIcono: 'var(--verde-texto)',
+                  valor: resultado.comparativo.mejorVehiculo.placa,
+                  sub: numero(resultado.comparativo.mejorVehiculo.rendimientoKmPorLitro, 2) + ' km/L (promedio del rango)',
+                  detalle: numero(resultado.comparativo.mejorVehiculo.kmRecorridos, 1) + ' km · ' + numero(resultado.comparativo.mejorVehiculo.litrosConsumidos, 1) + ' L',
+                })
+              : h(TarjetaComparativa, {
+                  etiqueta: 'Mejor vehículo',
+                  icono: 'trophy', fondoIcono: 'var(--gris-claro)', colorIcono: 'var(--gris)',
+                  valor: '—', detalle: 'Sin datos suficientes en el rango.',
+                }),
+            resultado.comparativo && resultado.comparativo.mejorViaje
+              ? h(TarjetaComparativa, {
+                  etiqueta: 'Mejor viaje',
+                  icono: 'route', fondoIcono: 'var(--ambar-claro)', colorIcono: 'var(--ambar-texto)',
+                  valor: numero(resultado.comparativo.mejorViaje.rendimientoKmPorLitro, 2) + ' km/L',
+                  sub: formatearSoloFecha(resultado.comparativo.mejorViaje.inicio) + ', ' + formatearSoloHora(resultado.comparativo.mejorViaje.inicio) + ' → ' + formatearSoloHora(resultado.comparativo.mejorViaje.fin),
+                  detalle: numero(resultado.comparativo.mejorViaje.kmRecorridos, 1) + ' km · ' + numero(resultado.comparativo.mejorViaje.litrosSegunOdolitro, 1) + ' L · ' + resultado.comparativo.mejorViaje.placa + ' (≥' + resultado.comparativo.kmMinimoMejorViaje + ' km)',
+                })
+              : h(TarjetaComparativa, {
+                  etiqueta: 'Mejor viaje',
+                  icono: 'route', fondoIcono: 'var(--gris-claro)', colorIcono: 'var(--gris)',
+                  valor: '—',
+                  detalle: 'Ningún viaje superó el mínimo de ' + (resultado.comparativo ? resultado.comparativo.kmMinimoMejorViaje : 50) + ' km en el rango.',
+                })
+          ),
+
+          h('h3', null, 'Resumen de flota'),
           h('div', { className: 'resumen-flota' },
             h(Metrica, {
               etiqueta: 'horas de motor (flota)', valor: formatearDuracion(resultado.flota.horasMotorMinutos),
