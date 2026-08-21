@@ -498,6 +498,7 @@
         h('td', null, v.rendimientoKmPorLitro === null ? '—' : numero(v.rendimientoKmPorLitro, 2)),
         h('td', null, v.velocidadMaxima === null ? '—' : numero(v.velocidadMaxima, 1)),
         h('td', null, formatearDuracion(v.ralentiMinutos)),
+        h('td', null, formatearDuracion(v.aceleracionVacioMinutos)),
         h('td', null, formatearDuracion(v.conduccionRentableMinutos)),
         h('td', null, formatearDuracion(v.conduccionNoRentableMinutos)),
         h('td', null, pill)
@@ -509,14 +510,14 @@
         v.advertencias.forEach(function (a, i) {
           filas.push(
             h('tr', { key: 'adv-' + i, className: 'viajes-detalle' },
-              h('td', { colSpan: 9 }, '⚠ ' + a)
+              h('td', { colSpan: 10 }, '⚠ ' + a)
             )
           );
         });
       }
       filas.push(
         h('tr', { key: 'viajes-header', className: 'viajes-detalle' },
-          h('td', { colSpan: 9 },
+          h('td', { colSpan: 10 },
             h('div', { style: { padding: '6px 0' } },
               h('strong', null, (v.viajes || []).length + ' viaje(s) detectado(s) en el rango'),
               (v.viajes || []).length > 0 && h('table', { className: 'tabla-viajes' },
@@ -838,6 +839,10 @@
               icono: 'clock-pause', fondoIcono: 'var(--rojo-claro)', colorIcono: 'var(--rojo-texto)',
             }),
             h(Metrica, {
+              etiqueta: 'aceleración en vacío (flota)', valor: formatearDuracion(resultado.flota.aceleracionVacioMinutos),
+              icono: 'engine', fondoIcono: 'var(--ambar-claro)', colorIcono: 'var(--ambar-texto)',
+            }),
+            h(Metrica, {
               etiqueta: 'conducción rentable (flota)', valor: formatearDuracion(resultado.flota.conduccionRentableMinutos),
               icono: 'leaf', fondoIcono: 'var(--verde-claro)', colorIcono: 'var(--verde-texto)',
             }),
@@ -858,6 +863,7 @@
                   h('th', null, 'km/L'),
                   h('th', null, 'Vel. máxima'),
                   h('th', null, 'Ralentí'),
+                  h('th', null, 'Acel. en vacío'),
                   h('th', null, 'Cond. rentable'),
                   h('th', null, 'Cond. no rentable'),
                   h('th', null, 'Estado')
