@@ -497,6 +497,7 @@
         h('td', null, numero(v.litrosConsumidos, 1)),
         h('td', null, v.rendimientoKmPorLitro === null ? '—' : numero(v.rendimientoKmPorLitro, 2)),
         h('td', null, v.velocidadMaxima === null ? '—' : numero(v.velocidadMaxima, 1)),
+        h('td', null, formatearDuracion(v.horasMotorMinutos)),
         h('td', null, formatearDuracion(v.ralentiMinutos)),
         h('td', null, formatearDuracion(v.aceleracionVacioMinutos)),
         h('td', null, formatearDuracion(v.conduccionRentableMinutos)),
@@ -510,14 +511,14 @@
         v.advertencias.forEach(function (a, i) {
           filas.push(
             h('tr', { key: 'adv-' + i, className: 'viajes-detalle' },
-              h('td', { colSpan: 10 }, '⚠ ' + a)
+              h('td', { colSpan: 11 }, '⚠ ' + a)
             )
           );
         });
       }
       filas.push(
         h('tr', { key: 'viajes-header', className: 'viajes-detalle' },
-          h('td', { colSpan: 10 },
+          h('td', { colSpan: 11 },
             h('div', { style: { padding: '6px 0' } },
               h('strong', null, (v.viajes || []).length + ' viaje(s) detectado(s) en el rango'),
               (v.viajes || []).length > 0 && h('table', { className: 'tabla-viajes' },
@@ -812,6 +813,10 @@
 
           h('div', { className: 'resumen-flota' },
             h(Metrica, {
+              etiqueta: 'horas de motor (flota)', valor: formatearDuracion(resultado.flota.horasMotorMinutos),
+              icono: 'engine', fondoIcono: 'var(--azul-claro)', colorIcono: 'var(--azul-texto)',
+            }),
+            h(Metrica, {
               etiqueta: 'km totales (flota)', valor: numero(resultado.flota.kmRecorridos, 1),
               icono: 'road', fondoIcono: 'var(--verde-claro)', colorIcono: 'var(--verde-texto)',
             }),
@@ -840,7 +845,7 @@
             }),
             h(Metrica, {
               etiqueta: 'aceleración en vacío (flota)', valor: formatearDuracion(resultado.flota.aceleracionVacioMinutos),
-              icono: 'engine', fondoIcono: 'var(--ambar-claro)', colorIcono: 'var(--ambar-texto)',
+              icono: 'gas-station', fondoIcono: 'var(--ambar-claro)', colorIcono: 'var(--ambar-texto)',
             }),
             h(Metrica, {
               etiqueta: 'conducción rentable (flota)', valor: formatearDuracion(resultado.flota.conduccionRentableMinutos),
@@ -862,6 +867,7 @@
                   h('th', null, 'Litros'),
                   h('th', null, 'km/L'),
                   h('th', null, 'Vel. máxima'),
+                  h('th', null, 'Horas motor'),
                   h('th', null, 'Ralentí'),
                   h('th', null, 'Acel. en vacío'),
                   h('th', null, 'Cond. rentable'),
