@@ -457,6 +457,7 @@
         h('td', null, numero(v.kmRecorridos, 1)),
         h('td', null, numero(v.litrosConsumidos, 1)),
         h('td', null, v.rendimientoKmPorLitro === null ? '—' : numero(v.rendimientoKmPorLitro, 2)),
+        h('td', null, v.velocidadMaxima === null ? '—' : numero(v.velocidadMaxima, 1)),
         h('td', null, formatearDuracion(v.ralentiMinutos)),
         h('td', null, formatearDuracion(v.conduccionRentableMinutos)),
         h('td', null, formatearDuracion(v.conduccionNoRentableMinutos)),
@@ -469,14 +470,14 @@
         v.advertencias.forEach(function (a, i) {
           filas.push(
             h('tr', { key: 'adv-' + i, className: 'viajes-detalle' },
-              h('td', { colSpan: 8 }, '⚠ ' + a)
+              h('td', { colSpan: 9 }, '⚠ ' + a)
             )
           );
         });
       }
       filas.push(
         h('tr', { key: 'viajes-header', className: 'viajes-detalle' },
-          h('td', { colSpan: 8 },
+          h('td', { colSpan: 9 },
             h('strong', null, (v.viajes || []).length + ' viaje(s) detectado(s) en el rango')
           )
         )
@@ -484,7 +485,7 @@
       (v.viajes || []).forEach(function (viaje, i) {
         filas.push(
           h('tr', { key: 'viaje-' + i, className: 'viajes-detalle' },
-            h('td', { colSpan: 8 },
+            h('td', { colSpan: 9 },
               formatearFecha(viaje.inicio) + ' → ' + formatearFecha(viaje.fin) +
               ' · ' + numero(viaje.kmRecorridos, 1) + ' km' +
               ' · ' + numero(viaje.litrosSegunOdolitro, 1) + ' L' +
@@ -775,6 +776,11 @@
               icono: 'gauge', fondoIcono: 'var(--azul-claro)', colorIcono: 'var(--azul-texto)',
             }),
             h(Metrica, {
+              etiqueta: 'km/h velocidad máxima',
+              valor: resultado.flota.velocidadMaxima === null ? '—' : numero(resultado.flota.velocidadMaxima, 1),
+              icono: 'trending-up', fondoIcono: 'var(--azul-claro)', colorIcono: 'var(--azul-texto)',
+            }),
+            h(Metrica, {
               etiqueta: 'ralentí (flota)', valor: formatearDuracion(resultado.flota.ralentiMinutos),
               icono: 'clock-pause', fondoIcono: 'var(--rojo-claro)', colorIcono: 'var(--rojo-texto)',
             }),
@@ -797,6 +803,7 @@
                   h('th', null, 'km'),
                   h('th', null, 'Litros'),
                   h('th', null, 'km/L'),
+                  h('th', null, 'Vel. máxima'),
                   h('th', null, 'Ralentí'),
                   h('th', null, 'Cond. rentable'),
                   h('th', null, 'Cond. no rentable'),
