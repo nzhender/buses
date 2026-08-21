@@ -54,6 +54,12 @@ const CONDUCCION_RENTABLE_VELOCIDAD_MIN = 1;
 const CONDUCCION_NO_RENTABLE_RPM_MIN = 1900;
 const CONDUCCION_NO_RENTABLE_VELOCIDAD_MIN = 1;
 
+// Aceleración en vacío: el motor se acelera por sobre 660 RPM con el
+// vehículo completamente detenido (velocidad 0) — típicamente el conductor
+// "pisando el acelerador" sin desplazamiento, distinto del ralentí normal
+// (500-620 RPM en marcha mínima). Definición confirmada con el usuario.
+const ACELERACION_VACIO_RPM_MIN = 660;
+
 // Si entre dos eventos consecutivos hay un hueco de datos mayor a esto, no se
 // cuenta ese intervalo como ralentí ni como conducción rentable (evita
 // inflar el tiempo por pérdida de señal o equipo apagado, donde no hay forma
@@ -87,6 +93,14 @@ function esConduccionNoRentable(evento) {
     evento.rpm > CONDUCCION_NO_RENTABLE_RPM_MIN &&
     typeof evento.speed === 'number' &&
     evento.speed > CONDUCCION_NO_RENTABLE_VELOCIDAD_MIN
+  );
+}
+
+function esAceleracionVacio(evento) {
+  return (
+    typeof evento.rpm === 'number' &&
+    evento.rpm > ACELERACION_VACIO_RPM_MIN &&
+    evento.speed === 0
   );
 }
 
@@ -165,6 +179,19 @@ function calcularConduccionNoRentableMinutos(enRango, advertencias) {
   );
 }
 
+/**
+ * Suma el tiempo en aceleración en vacío (RPM > 660 con velocidad 0) dentro
+ * de una lista de eventos ya ordenados y filtrados por rango.
+ */
+function calcularAceleracionVacioMinutos(enRango, advertencias) {
+  return sumarMinutosPorCondicion(
+    enRango,
+    esAceleracionVacio,
+    advertencias,
+    'aceleración en vacío (posible pérdida de señal o equipo apagado)'
+  );
+}
+
 /** Ordena eventos por timestamp ascendente (no asumimos que la API los entregue ordenados). */
 function ordenarPorTiempo(eventos) {
   return [...eventos].sort((a, b) => toEpoch(a) - toEpoch(b));
@@ -215,6 +242,7 @@ function calcularRendimiento(eventos, { desde, hasta }) {
       ralentiMinutos: 0,
       conduccionRentableMinutos: 0,
       conduccionNoRentableMinutos: 0,
+      aceleracionVacioMinutos: 0,
       muestras: 0,
       segmentos: 0,
       primerRegistro: null,
@@ -267,6 +295,7 @@ function calcularRendimiento(eventos, { desde, hasta }) {
   const ralentiMinutos = calcularRalentiMinutos(enRango, advertencias);
   const conduccionRentableMinutos = calcularConduccionRentableMinutos(enRango, advertencias);
   const conduccionNoRentableMinutos = calcularConduccionNoRentableMinutos(enRango, advertencias);
+  const aceleracionVacioMinutos = calcularAceleracionVacioMinutos(enRango, advertencias);
 
   const velocidadMaxima = velocidadesValidas.length > 0 ? Math.max(...velocidadesValidas) : null;
 
@@ -281,6 +310,7 @@ function calcularRendimiento(eventos, { desde, hasta }) {
     ralentiMinutos,
     conduccionRentableMinutos,
     conduccionNoRentableMinutos,
+    aceleracionVacioMinutos,
     muestras: enRango.length,
     segmentos,
     primerRegistro: enRango[0].gps_utc_time,
@@ -354,6 +384,7 @@ function agregarFlota(resultadosPorVehiculo) {
   const ralentiMinutosTotal = resultadosPorVehiculo.reduce((acc, r) => acc + (r.ralentiMinutos || 0), 0);
   const conduccionRentableMinutosTotal = resultadosPorVehiculo.reduce((acc, r) => acc + (r.conduccionRentableMinutos || 0), 0);
   const conduccionNoRentableMinutosTotal = resultadosPorVehiculo.reduce((acc, r) => acc + (r.conduccionNoRentableMinutos || 0), 0);
+  const aceleracionVacioMinutosTotal = resultadosPorVehiculo.reduce((acc, r) => acc + (r.aceleracionVacioMinutos || 0), 0);
 
   const velocidadesMaximas = resultadosPorVehiculo
     .map((r) => r.velocidadMaxima)
@@ -369,6 +400,7 @@ function agregarFlota(resultadosPorVehiculo) {
     ralentiMinutos: Number(ralentiMinutosTotal.toFixed(1)),
     conduccionRentableMinutos: Number(conduccionRentableMinutosTotal.toFixed(1)),
     conduccionNoRentableMinutos: Number(conduccionNoRentableMinutosTotal.toFixed(1)),
+    aceleracionVacioMinutos: Number(aceleracionVacioMinutosTotal.toFixed(1)),
     vehiculos: resultadosPorVehiculo.length,
   };
 }
