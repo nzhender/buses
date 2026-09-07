@@ -37,11 +37,17 @@
 
   /* --- sidebar --- */
   aside {
-    width: 220px;
+    width: 320px;
     flex-shrink: 0;
     background: var(--navy);
     color: #a8b0bb;
-    padding: 20px 14px;
+    padding: 20px 14px 24px;
+    min-height: 100vh;
+    position: sticky;
+    top: 0;
+    align-self: flex-start;
+    overflow-y: auto;
+    max-height: 100vh;
   }
   .marca {
     display: flex;
@@ -84,8 +90,12 @@
     font-size: 13px;
     background: var(--navy-2);
     color: var(--verde);
+    margin-bottom: 20px;
   }
   .nav-item i { font-size: 16px; }
+  .card-sidebar {
+    margin-bottom: 0;
+  }
 
   /* --- main --- */
   main { flex: 1; padding: 32px 40px 60px; max-width: 1080px; }
@@ -135,11 +145,8 @@
   .fila-hora .sep { text-align: center; color: var(--gris); font-weight: 600; }
   .fila-fechas {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
     gap: 16px;
-  }
-  @media (max-width: 640px) {
-    .fila-fechas { grid-template-columns: 1fr; }
   }
 
   .vehiculos-box {
@@ -204,6 +211,14 @@
     margin-bottom: 16px;
   }
   .cargando { color: var(--gris); font-size: 14px; }
+
+  .estado-vacio {
+    text-align: center;
+    padding: 60px 24px;
+    color: var(--gris);
+  }
+  .estado-vacio i { font-size: 32px; color: #d1d5db; margin-bottom: 12px; display: block; }
+  .estado-vacio p { margin: 0; font-size: 14px; max-width: 320px; margin: 0 auto; }
 
   .resumen-flota {
     display: grid;
@@ -740,7 +755,7 @@
 
     return h('div', { style: { display: 'flex', width: '100%' } },
 
-      // --- sidebar ---
+      // --- sidebar: navegación + formulario de consulta ---
       h('aside', null,
         h('div', { className: 'marca' },
           h('div', { className: 'marca-icono' }, h('i', { className: 'ti ti-bus', 'aria-hidden': 'true' })),
@@ -750,22 +765,10 @@
         h('div', { className: 'nav-item' },
           h('i', { className: 'ti ti-gauge', 'aria-hidden': 'true' }),
           'Rendimiento'
-        )
-      ),
-
-      // --- contenido principal ---
-      h('main', null,
-
-        h('div', { className: 'encabezado' },
-          h('div', null,
-            h('h1', null, 'Rendimiento de buses'),
-            h('p', null, 'Consulta rendimiento (km/L) y velocidad por empresa y vehículo')
-          ),
-          h('div', { className: 'fecha-hoy' }, formatearFechaHoy())
         ),
 
-        // --- formulario ---
-        h('div', { className: 'card' },
+        // --- formulario de consulta (empresa, unidades, fechas) ---
+        h('div', { className: 'card card-sidebar' },
           h('h2', null, 'Consulta'),
 
           errorEmpresas && h('div', { className: 'error-msg' }, errorEmpresas),
@@ -793,7 +796,7 @@
               h('div', { className: 'top-vehiculos' },
                 h('label', { style: { marginBottom: 0 } }, 'Unidad(es) (' + placasElegidas.length + ' seleccionadas)'),
                 h('div', null,
-                  h('button', { type: 'button', className: 'link-btn', onClick: seleccionarTodos }, 'Seleccionar todos'),
+                  h('button', { type: 'button', className: 'link-btn', onClick: seleccionarTodos }, 'Todos'),
                   h('span', null, ' · '),
                   h('button', { type: 'button', className: 'link-btn', onClick: limpiarSeleccion }, 'Limpiar')
                 )
@@ -837,9 +840,26 @@
               cargandoRes ? 'Consultando…' : 'Ver rendimiento'
             )
           )
+        )
+      ),
+
+      // --- contenido principal: encabezado + resultados ---
+      h('main', null,
+
+        h('div', { className: 'encabezado' },
+          h('div', null,
+            h('h1', null, 'Rendimiento de buses'),
+            h('p', null, 'Consulta rendimiento (km/L) y velocidad por empresa y vehículo')
+          ),
+          h('div', { className: 'fecha-hoy' }, formatearFechaHoy())
         ),
 
         errorRes && h('div', { className: 'error-msg' }, errorRes),
+
+        !resultado && !errorRes && h('div', { className: 'card estado-vacio' },
+          h('i', { className: 'ti ti-chart-line', 'aria-hidden': 'true' }),
+          h('p', null, 'Completa la consulta a la izquierda y presiona "Ver rendimiento" para ver los resultados aquí.')
+        ),
 
         // --- resultados ---
         resultado && h('div', { className: 'card' },
@@ -847,6 +867,7 @@
           h('p', { className: 'nota' },
             formatearFecha(resultado.desde) + ' → ' + formatearFecha(resultado.hasta) + ' (hora local, formato 24 hrs)'
           ),
+
 
           h('h3', { style: { marginTop: 0 } }, 'Comparativo de flota'),
           h('div', { className: 'comparativo' },
