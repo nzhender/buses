@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Rendimiento de Buses</title>
+<script src="https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/2.47.0/iconfont/tabler-icons.min.css" />
+<style>
+  :root {
+    --navy: #10151c;
+    --navy-2: #1a2129;
+    --verde: #1d9e75;
+    --verde-claro: #e1f5ee;
+    --verde-texto: #085041;
+    --ambar-claro: #faeeda;
+    --ambar-texto: #633806;
+    --azul-claro: #e6f1fb;
+    --azul-texto: #0c447c;
+    --rojo-claro: #fcebeb;
+    --rojo-texto: #791f1f;
+    --gris: #6b7280;
+    --gris-claro: #f3f4f6;
+    --borde: #e5e7eb;
+    --fondo: #f7f8fa;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--fondo);
+    color: #111827;
+  }
+  #root { display: flex; min-height: 100vh; }
+
+  /* --- sidebar --- */
+  aside {
+    width: 320px;
+    flex-shrink: 0;
+    background: var(--navy);
+    color: #a8b0bb;
+    padding: 20px 14px 24px;
+    min-height: 100vh;
+    position: sticky;
+    top: 0;
+    align-self: flex-start;
+    overflow-y: auto;
+    max-height: 100vh;
+  }
+  .marca {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 28px;
+    padding: 0 4px;
+  }
+  .marca-icono {
+    width: 32px;
+    height: 32px;
+    border-radius: 7px;
+    background: var(--verde);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 17px;
+    flex-shrink: 0;
+  }
+  .marca-texto {
+    color: white;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.25;
+  }
+  .marca-texto span { color: var(--verde); }
+  .nav-seccion {
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    color: #5b6472;
+    margin: 0 8px 8px;
+  }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 10px;
+    border-radius: 7px;
+    font-size: 13px;
+    background: var(--navy-2);
+    color: var(--verde);
+    margin-bottom: 20px;
+  }
+  .nav-item i { font-size: 16px; }
+  .card-sidebar {
+    margin-bottom: 0;
+  }
+
+  /* --- main --- */
+  main { flex: 1; padding: 32px 40px 60px; max-width: 1080px; }
+  .encabezado {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 20px;
+  }
+  .encabezado h1 { margin: 0; font-size: 19px; font-weight: 600; }
+  .encabezado p { margin: 3px 0 0; font-size: 13px; color: var(--gris); }
+  .fecha-hoy { font-size: 13px; color: var(--gris); padding-top: 3px; }
+
+  .card {
+    background: white;
+    border: 0.5px solid var(--borde);
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 24px;
+  }
+  h2 { font-size: 15px; font-weight: 600; margin: 0 0 14px; }
+  h3 { font-size: 13px; font-weight: 600; margin: 20px 0 10px; }
+
+  label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 6px;
+  }
+  select, input[type="date"], input[type="text"] {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--borde);
+    border-radius: 7px;
+    font-size: 14px;
+    background: white;
+    font-family: inherit;
+  }
+  .bloque { margin-bottom: 18px; }
+  .fila-hora {
+    display: grid;
+    grid-template-columns: 1fr 70px 12px 70px;
+    gap: 6px;
+    align-items: center;
+  }
+  .fila-hora .sep { text-align: center; color: var(--gris); font-weight: 600; }
+  .fila-fechas {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .vehiculos-box {
+    max-height: 220px;
+    overflow-y: auto;
+    border: 1px solid var(--borde);
+    border-radius: 7px;
+    padding: 10px 12px;
+  }
+  .vehiculo-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0;
+    font-size: 14px;
+  }
+  .vehiculo-item input { margin: 0; }
+  .top-vehiculos {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .link-btn {
+    background: none;
+    border: none;
+    color: var(--verde-texto);
+    font-size: 13px;
+    cursor: pointer;
+    padding: 0;
+  }
+  button.primario {
+    background: var(--navy);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 7px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button.primario:disabled {
+    background: #9ca3af;
+    cursor: not-allowed;
+  }
+  .error-msg {
+    background: var(--rojo-claro);
+    color: var(--rojo-texto);
+    border: 1px solid #f0999966;
+    padding: 10px 14px;
+    border-radius: 7px;
+    font-size: 13px;
+    margin-bottom: 16px;
+  }
+  .aviso-msg {
+    background: var(--ambar-claro);
+    color: var(--ambar-texto);
+    border: 1px solid #ef9f2766;
+    padding: 10px 14px;
+    border-radius: 7px;
+    font-size: 13px;
+    margin-bottom: 16px;
+  }
+  .cargando { color: var(--gris); font-size: 14px; }
+
+  .estado-vacio {
+    text-align: center;
+    padding: 60px 24px;
+    color: var(--gris);
+  }
+  .estado-vacio i { font-size: 32px; color: #d1d5db; margin-bottom: 12px; display: block; }
+  .estado-vacio p { margin: 0; font-size: 14px; max-width: 320px; margin: 0 auto; }
+
+  .resumen-flota {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 20px 24px;
+    margin-bottom: 8px;
+  }
+  @media (max-width: 900px) {
+    .resumen-flota { grid-template-columns: repeat(2, 1fr); }
+  }
+  .comparativo {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+  @media (max-width: 900px) {
+    .comparativo { grid-template-columns: 1fr; }
+  }
+  .comparativo-card {
+    background: white;
+    border: 0.5px solid var(--borde);
+    border-radius: 16px;
+    padding: 20px;
+  }
+  .comparativo-top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .comparativo-icono { font-size: 16px; flex-shrink: 0; }
+  .comparativo-etiqueta { font-size: 12px; color: var(--gris); }
+  .comparativo-valor { font-size: 22px; font-weight: 500; }
+  .comparativo-sub { font-size: 13px; color: var(--gris); margin-top: 4px; }
+  .comparativo-detalle {
+    font-size: 12px;
+    color: #9ca3af;
+    margin-top: 10px;
+    border-top: 0.5px solid var(--borde);
+    padding-top: 10px;
+  }
+  .metrica {
+    border-left: 3px solid var(--acento, var(--verde));
+    padding-left: 14px;
+  }
+  .metrica-etiqueta { font-size: 12px; color: var(--gris); margin-top: 4px; }
+  .metrica .valor { font-size: 22px; font-weight: 500; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th {
+    text-align: left;
+    padding: 10px 14px;
+    background: white;
+    color: var(--gris);
+    font-weight: 600;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--borde);
+  }
+  td { padding: 12px 14px; border-bottom: 0.5px solid var(--borde); }
+  .tabla-wrap { border: 0.5px solid var(--borde); border-radius: 16px; overflow: hidden; }
+  .placa-row { cursor: pointer; }
+  .placa-row:hover { background: var(--gris-claro); }
+  .placa-celda { font-weight: 600; }
+  .pill {
+    display: inline-block;
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 5px;
+    font-weight: 500;
+  }
+  .pill-ok { background: #eaf3de; color: #173404; }
+  .pill-warn { background: var(--ambar-claro); color: var(--ambar-texto); }
+  .pill-muted { background: var(--gris-claro); color: var(--gris); }
+  .viajes-detalle { background: var(--gris-claro); }
+  .viajes-detalle td { padding: 4px 14px 4px 34px; font-size: 12px; }
+  .tabla-viajes {
+    width: 100%;
+    margin-top: 6px;
+    border-collapse: collapse;
+    font-size: 12px;
+    background: white;
+    border: 1px solid var(--borde);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .tabla-viajes th {
+    text-align: left;
+    padding: 6px 10px;
+    background: var(--fondo);
+    color: var(--gris);
+    font-weight: 600;
+    font-size: 10px;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--borde);
+  }
+  .tabla-viajes td {
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--borde);
+    color: #111827;
+  }
+  .tabla-viajes tr:last-child td { border-bottom: none; }
+  .chart-wrap { position: relative; height: 320px; margin-top: 10px; }
+  .nota { font-size: 12px; color: var(--gris); margin-top: 8px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+  var h = React.createElement;
+  var useState = React.useState;
+  var useEffect = React.useEffect;
+  var useRef = React.useRef;
+  var useMemo = React.useMemo;
+
+  // --- utilidades ---
+
+  function formatearFecha(iso) {
+    if (!iso) return '';
+    var d = new Date(iso);
+    return d.toLocaleString('es-CL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
+  }
+
+  function formatearSoloFecha(iso) {
+    if (!iso) return '';
+    var d = new Date(iso);
+    return d.toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  }
+
+  function formatearSoloHora(iso) {
+    if (!iso) return '';
+    var d = new Date(iso);
+    return d.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', hour12: false });
+  }
+
+  // formatea una clave de día 'YYYY-MM-DD' (sin componente de hora) a una
+  // fecha legible, sin desfases de zona horaria por interpretarla como UTC.
+  function formatearDiaYMD(fechaYMD) {
+    if (!fechaYMD) return '';
+    var partes = fechaYMD.split('-');
+    var d = new Date(Number(partes[0]), Number(partes[1]) - 1, Number(partes[2]));
+    return d.toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' });
+  }
+
+  function formatearFechaHoy() {
+    var d = new Date();
+    var texto = d.toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    return texto.charAt(0).toUpperCase() + texto.slice(1);
+  }
+
+  function numero(n, decimales) {
+    if (n === null || n === undefined || Number.isNaN(n)) return '—';
+    return Number(n).toLocaleString('es-CL', { minimumFractionDigits: decimales, maximumFractionDigits: decimales });
+  }
+
+  // convierte minutos a un formato legible: "45 min" o "2h 15min"
+  function formatearDuracion(minutos) {
+    if (minutos === null || minutos === undefined || Number.isNaN(minutos)) return '—';
+    if (minutos < 60) return numero(minutos, 1) + ' min';
+    var horas = Math.floor(minutos / 60);
+    var mins = Math.round(minutos % 60);
+    return horas + 'h ' + mins + 'min';
+  }
+
+  // muestrea una serie para no pintar miles de puntos en el gráfico
+  function muestrear(serie, maxPuntos) {
+    if (!serie || serie.length <= maxPuntos) return serie || [];
+    var paso = Math.ceil(serie.length / maxPuntos);
+    var out = [];
+    for (var i = 0; i < serie.length; i += paso) out.push(serie[i]);
+    return out;
+  }
+
+  // combina un input date (YYYY-MM-DD) + hora (00-23) + minuto (00-59), en
+  // hora LOCAL del navegador, y devuelve el ISO string correspondiente (UTC).
+  function combinarFechaHora(fecha, hora, minuto) {
+    if (!fecha) return null;
+    var partes = fecha.split('-');
+    var d = new Date(
+      Number(partes[0]),
+      Number(partes[1]) - 1,
+      Number(partes[2]),
+      Number(hora),
+      Number(minuto),
+      0
+    );
+    if (Number.isNaN(d.getTime())) return null;
+    return d.toISOString();
+  }
+
+  var HORAS = [];
+  for (var hh = 0; hh < 24; hh++) HORAS.push(hh < 10 ? '0' + hh : '' + hh);
+  var MINUTOS = ['00', '15', '30', '45'];
+
+  // --- componente: selector de hora en formato 24hrs ---
+
+  function SelectorHora(props) {
+    return h('div', { className: 'fila-hora' },
+      h('div', null,
+        h('label', null, props.etiqueta),
+        h('input', {
+          type: 'date',
+          value: props.fecha,
+          onChange: function (e) { props.onFecha(e.target.value); },
+        })
+      ),
+      h('select', {
+        value: props.hora,
+        onChange: function (e) { props.onHora(e.target.value); },
+        'aria-label': 'Hora (' + props.etiqueta + ')',
+        style: { marginTop: '20px' },
+      }, HORAS.map(function (v) { return h('option', { key: v, value: v }, v); })),
+      h('div', { className: 'sep', style: { marginTop: '20px' } }, ':'),
+      h('select', {
+        value: props.minuto,
+        onChange: function (e) { props.onMinuto(e.target.value); },
+        'aria-label': 'Minutos (' + props.etiqueta + ')',
+        style: { marginTop: '20px' },
+      }, MINUTOS.map(function (v) { return h('option', { key: v, value: v }, v); }))
+    );
+  }
+
+  // --- componente: tarjeta de métrica ---
+
+  function Metrica(props) {
+    return h('div', { className: 'metrica', style: { borderLeftColor: props.color } },
+      h('div', { className: 'valor' }, props.valor),
+      h('div', { className: 'metrica-etiqueta' }, props.etiqueta)
+    );
+  }
+
+  // --- componente: tarjeta del cuadro comparativo (mejor día / mejor
+  // vehículo / mejor viaje) ---
+
+  function TarjetaComparativa(props) {
+    return h('div', { className: 'comparativo-card' },
+      h('div', { className: 'comparativo-top' },
+        h('i', { className: 'comparativo-icono ti ti-' + props.icono, style: { color: props.colorIcono }, 'aria-hidden': 'true' }),
+        h('span', { className: 'comparativo-etiqueta' }, props.etiqueta)
+      ),
+      h('div', { className: 'comparativo-valor' }, props.valor),
+      props.sub && h('div', { className: 'comparativo-sub' }, props.sub),
+      h('div', { className: 'comparativo-detalle' }, props.detalle)
+    );
+  }
+
+  // --- componente: gráfico de velocidad (Chart.js, sin wrapper de React) ---
+
+  function GraficoVelocidad(props) {
+    var canvasRef = useRef(null);
+    var chartRef = useRef(null);
+
+    useEffect(function () {
+      if (!canvasRef.current) return;
+      if (chartRef.current) {
+        chartRef.current.destroy();
+      }
+
+      var datasets = props.vehiculos.map(function (v, idx) {
+        var colores = ['#1d9e75', '#0c447c', '#633806', '#791f1f', '#534ab7', '#993556'];
+        var color = colores[idx % colores.length];
+        var puntos = muestrear(v.serieVelocidad, 150);
+        return {
+          label: v.placa,
+          data: puntos.map(function (p) { return p.v; }),
+          borderColor: color,
+          backgroundColor: color,
+          borderWidth: 1.5,
+          pointRadius: 0,
+          tension: 0.15,
+        };
+      });
+
+      var etiquetas = [];
+      if (props.vehiculos[0]) {
+        etiquetas = muestrear(props.vehiculos[0].serieVelocidad, 150).map(function (p) {
+          return formatearFecha(p.t);
+        });
+      }
+
+      chartRef.current = new Chart(canvasRef.current, {
+        type: 'line',
+        data: { labels: etiquetas, datasets: datasets },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: false,
+          scales: {
+            y: { title: { display: true, text: 'km/h' } },
+          },
+          plugins: {
+            legend: { position: 'bottom' },
+          },
+        },
+      });
+
+      return function () {
+        if (chartRef.current) chartRef.current.destroy();
+      };
+    }, [props.vehiculos]);
+
+    return h('div', { className: 'chart-wrap' }, h('canvas', { ref: canvasRef }));
+  }
+
+  // --- componente: fila de vehículo con detalle de viajes expandible ---
+
+  function FilaVehiculo(props) {
+    var v = props.vehiculo;
+    var expandido = props.expandido;
+    var tieneAvisos = v.advertencias && v.advertencias.length > 0;
+
+    var pill;
+    if (tieneAvisos) {
+      pill = h('span', { className: 'pill pill-warn' }, v.advertencias.length + ' aviso(s)');
+    } else if (v.rendimientoKmPorLitro !== null) {
+      pill = h('span', { className: 'pill pill-ok' }, 'Sin novedades');
+    } else {
+      pill = h('span', { className: 'pill pill-muted' }, 'Sin datos');
+    }
+
+    var filas = [
+      h('tr', { key: 'main', className: 'placa-row', onClick: props.onToggle },
+        h('td', { className: 'placa-celda' }, v.placa),
+        h('td', null, numero(v.kmRecorridos, 1)),
+        h('td', null, numero(v.litrosConsumidos, 1)),
+        h('td', null, v.rendimientoKmPorLitro === null ? '—' : numero(v.rendimientoKmPorLitro, 2)),
+        h('td', null, v.velocidadMaxima === null ? '—' : numero(v.velocidadMaxima, 1)),
+        h('td', null, formatearDuracion(v.horasMotorMinutos)),
+        h('td', null, formatearDuracion(v.ralentiMinutos)),
+        h('td', null, formatearDuracion(v.aceleracionVacioMinutos)),
+        h('td', null, formatearDuracion(v.conduccionRentableMinutos)),
+        h('td', null, formatearDuracion(v.conduccionNoRentableMinutos)),
+        h('td', null, pill)
+      ),
+    ];
+
+    if (expandido) {
+      if (tieneAvisos) {
+        v.advertencias.forEach(function (a, i) {
+          filas.push(
+            h('tr', { key: 'adv-' + i, className: 'viajes-detalle' },
+              h('td', { colSpan: 11 }, '⚠ ' + a)
+            )
+          );
+        });
+      }
+      filas.push(
+        h('tr', { key: 'viajes-header', className: 'viajes-detalle' },
+          h('td', { colSpan: 11 },
+            h('div', { style: { padding: '6px 0' } },
+              h('strong', null, (v.viajes || []).length + ' viaje(s) detectado(s) en el rango'),
+              (v.viajes || []).length > 0 && h('table', { className: 'tabla-viajes' },
+                h('thead', null,
+                  h('tr', null,
+                    h('th', null, 'Fecha'),
+                    h('th', null, 'Inicio'),
+                    h('th', null, 'Término'),
+                    h('th', null, 'km recorridos'),
+                    h('th', null, 'Litros consumidos'),
+                    h('th', null, 'Rendimiento')
+                  )
+                ),
+                h('tbody', null,
+                  (v.viajes || []).map(function (viaje, i) {
+                    return h('tr', { key: 'viaje-' + i },
+                      h('td', null, formatearSoloFecha(viaje.inicio)),
+                      h('td', null, formatearSoloHora(viaje.inicio)),
+                      h('td', null, formatearSoloHora(viaje.fin)),
+                      h('td', null, numero(viaje.kmRecorridos, 1)),
+                      h('td', null, numero(viaje.litrosSegunOdolitro, 1)),
+                      h('td', null, viaje.rendimientoKmPorLitro !== null ? numero(viaje.rendimientoKmPorLitro, 2) + ' km/L' : '—')
+                    );
+                  })
+                )
+              )
+            )
+          )
+        )
+      );
+    }
+
+    return filas;
+  }
+
+  // --- componente principal ---
+
+  function App() {
+    var empresasState = useState([]);
+    var empresas = empresasState[0], setEmpresas = empresasState[1];
+
+    var cargandoEmpresasState = useState(true);
+    var cargandoEmpresas = cargandoEmpresasState[0], setCargandoEmpresas = cargandoEmpresasState[1];
+
+    var errorEmpresasState = useState(null);
+    var errorEmpresas = errorEmpresasState[0], setErrorEmpresas = errorEmpresasState[1];
+
+    var empresaIdState = useState('');
+    var empresaId = empresaIdState[0], setEmpresaId = empresaIdState[1];
+
+    var placasSelState = useState({});
+    var placasSel = placasSelState[0], setPlacasSel = placasSelState[1];
+
+    // fecha/hora "desde", en formato 24hrs (hora y minuto van por separado)
+    var desdeFechaState = useState('');
+    var desdeFecha = desdeFechaState[0], setDesdeFecha = desdeFechaState[1];
+    var desdeHoraState = useState('00');
+    var desdeHora = desdeHoraState[0], setDesdeHora = desdeHoraState[1];
+    var desdeMinState = useState('00');
+    var desdeMin = desdeMinState[0], setDesdeMin = desdeMinState[1];
+
+    // fecha/hora "hasta"
+    var hastaFechaState = useState('');
+    var hastaFecha = hastaFechaState[0], setHastaFecha = hastaFechaState[1];
+    var hastaHoraState = useState('23');
+    var hastaHora = hastaHoraState[0], setHastaHora = hastaHoraState[1];
+    var hastaMinState = useState('45');
+    var hastaMin = hastaMinState[0], setHastaMin = hastaMinState[1];
+
+    var cargandoResState = useState(false);
+    var cargandoRes = cargandoResState[0], setCargandoRes = cargandoResState[1];
+
+    var errorResState = useState(null);
+    var errorRes = errorResState[0], setErrorRes = errorResState[1];
+
+    var resultadoState = useState(null);
+    var resultado = resultadoState[0], setResultado = resultadoState[1];
+
+    var expandidoState = useState(null);
+    var expandidoPlaca = expandidoState[0], setExpandidoPlaca = expandidoState[1];
+
+    useEffect(function () {
+      setCargandoEmpresas(true);
+      fetch('/api/empresas')
+        .then(function (res) {
+          if (!res.ok) throw new Error('El servidor respondió ' + res.status);
+          return res.json();
+        })
+        .then(function (data) {
+          setEmpresas(data);
+          setCargandoEmpresas(false);
+        })
+        .catch(function (err) {
+          setErrorEmpresas('No se pudo cargar la lista de empresas: ' + err.message + '. Si el servidor estaba dormido, recarga la página en unos segundos.');
+          setCargandoEmpresas(false);
+        });
+    }, []);
+
+    var empresaActual = useMemo(function () {
+      return empresas.find(function (e) { return e.empresaId === empresaId; }) || null;
+    }, [empresas, empresaId]);
+
+    function handleEmpresaChange(e) {
+      setEmpresaId(e.target.value);
+      setPlacasSel({});
+      setResultado(null);
+      setErrorRes(null);
+    }
+
+    function toggleVehiculo(placa) {
+      setPlacasSel(function (prev) {
+        var next = Object.assign({}, prev);
+        next[placa] = !next[placa];
+        return next;
+      });
+    }
+
+    function seleccionarTodos() {
+      if (!empresaActual) return;
+      var next = {};
+      empresaActual.vehiculos.forEach(function (v) { next[v.license_plate || v.placa] = true; });
+      setPlacasSel(next);
+    }
+
+    function limpiarSeleccion() {
+      setPlacasSel({});
+    }
+
+    var placasElegidas = Object.keys(placasSel).filter(function (p) { return placasSel[p]; });
+
+    var desdeIso = combinarFechaHora(desdeFecha, desdeHora, desdeMin);
+    var hastaIso = combinarFechaHora(hastaFecha, hastaHora, hastaMin);
+
+    var rangoValido = true;
+    var mensajeRango = '';
+    if (desdeIso && hastaIso) {
+      var dDesde = new Date(desdeIso), dHasta = new Date(hastaIso);
+      if (dHasta <= dDesde) {
+        rangoValido = false;
+        mensajeRango = 'La fecha/hora final debe ser posterior a la inicial.';
+      } else {
+        var dias = (dHasta - dDesde) / (1000 * 60 * 60 * 24);
+        if (dias > 5) {
+          rangoValido = false;
+          mensajeRango = 'El rango máximo permitido es de 5 días (elegiste ' + numero(dias, 1) + ').';
+        }
+      }
+    }
+
+    var puedeConsultar = empresaId && placasElegidas.length > 0 && desdeIso && hastaIso && rangoValido && !cargandoRes;
+
+    function handleSubmit(e) {
+      e.preventDefault();
+      if (!puedeConsultar) return;
+
+      var params = new URLSearchParams();
+      params.set('empresa', empresaId);
+      params.set('placas', placasElegidas.join(','));
+      params.set('desde', desdeIso);
+      params.set('hasta', hastaIso);
+
+      setCargandoRes(true);
+      setErrorRes(null);
+      setResultado(null);
+
+      fetch('/api/rendimiento?' + params.toString())
+        .then(function (res) {
+          return res.json().then(function (body) {
+            if (!res.ok) throw new Error(body.error || ('El servidor respondió ' + res.status));
+            return body;
+          });
+        })
+        .then(function (data) {
+          setResultado(data);
+          setCargandoRes(false);
+        })
+        .catch(function (err) {
+          setErrorRes(err.message);
+          setCargandoRes(false);
+        });
+    }
+
+    return h('div', { style: { display: 'flex', width: '100%' } },
+
+      // --- sidebar: navegación + formulario de consulta ---
+      h('aside', null,
+        h('div', { className: 'marca' },
+          h('div', { className: 'marca-icono' }, h('i', { className: 'ti ti-bus', 'aria-hidden': 'true' })),
+          h('div', { className: 'marca-texto' }, 'Connect', h('br'), h('span', null, 'Buses'))
+        ),
+        h('div', { className: 'nav-seccion' }, 'PRINCIPAL'),
+        h('div', { className: 'nav-item' },
+          h('i', { className: 'ti ti-gauge', 'aria-hidden': 'true' }),
+          'Rendimiento'
+        ),
+
+        // --- formulario de consulta (empresa, unidades, fechas) ---
+        h('div', { className: 'card card-sidebar' },
+          h('h2', null, 'Consulta'),
+
+          errorEmpresas && h('div', { className: 'error-msg' }, errorEmpresas),
+          cargandoEmpresas && h('p', { className: 'cargando' }, 'Cargando empresas… (puede tardar unos segundos si el servidor estaba dormido)'),
+
+          !cargandoEmpresas && !errorEmpresas && h('form', { onSubmit: handleSubmit },
+
+            // 1. buscador de empresas
+            h('div', { className: 'bloque' },
+              h('label', null, 'Empresa'),
+              h('select', { value: empresaId, onChange: handleEmpresaChange },
+                h('option', { value: '' }, '— Selecciona una empresa —'),
+                empresas.map(function (e) {
+                  return h('option', { key: e.empresaId, value: e.empresaId }, e.nombre);
+                })
+              )
+            ),
+
+            empresaActual && empresaActual.error && h('div', { className: 'aviso-msg' },
+              'No se pudo obtener la flota de esta empresa desde Copiloto: ' + empresaActual.error
+            ),
+
+            // 2. selección de unidad(es)
+            empresaActual && !empresaActual.error && h('div', { className: 'bloque' },
+              h('div', { className: 'top-vehiculos' },
+                h('label', { style: { marginBottom: 0 } }, 'Unidad(es) (' + placasElegidas.length + ' seleccionadas)'),
+                h('div', null,
+                  h('button', { type: 'button', className: 'link-btn', onClick: seleccionarTodos }, 'Todos'),
+                  h('span', null, ' · '),
+                  h('button', { type: 'button', className: 'link-btn', onClick: limpiarSeleccion }, 'Limpiar')
+                )
+              ),
+              h('div', { className: 'vehiculos-box' },
+                empresaActual.vehiculos.length === 0
+                  ? h('p', { className: 'cargando' }, 'Esta empresa no tiene vehículos registrados.')
+                  : empresaActual.vehiculos.map(function (v) {
+                      var placa = v.license_plate || v.placa;
+                      return h('label', { key: placa, className: 'vehiculo-item' },
+                        h('input', {
+                          type: 'checkbox',
+                          checked: !!placasSel[placa],
+                          onChange: function () { toggleVehiculo(placa); },
+                        }),
+                        placa
+                      );
+                    })
+              )
+            ),
+
+            // 3. fecha de inicio y fin, con hora en formato 24hrs
+            h('div', { className: 'bloque fila-fechas' },
+              h(SelectorHora, {
+                etiqueta: 'Desde',
+                fecha: desdeFecha, onFecha: setDesdeFecha,
+                hora: desdeHora, onHora: setDesdeHora,
+                minuto: desdeMin, onMinuto: setDesdeMin,
+              }),
+              h(SelectorHora, {
+                etiqueta: 'Hasta',
+                fecha: hastaFecha, onFecha: setHastaFecha,
+                hora: hastaHora, onHora: setHastaHora,
+                minuto: hastaMin, onMinuto: setHastaMin,
+              })
+            ),
+
+            mensajeRango && h('div', { className: 'error-msg' }, mensajeRango),
+
+            h('button', { type: 'submit', className: 'primario', disabled: !puedeConsultar },
+              cargandoRes ? 'Consultando…' : 'Ver rendimiento'
+            )
+          )
+        )
+      ),
+
+      // --- contenido principal: encabezado + resultados ---
+      h('main', null,
+
+        h('div', { className: 'encabezado' },
+          h('div', null,
+            h('h1', null, 'Rendimiento de buses'),
+            h('p', null, 'Consulta rendimiento (km/L) y velocidad por empresa y vehículo')
+          ),
+          h('div', { className: 'fecha-hoy' }, formatearFechaHoy())
+        ),
+
+        errorRes && h('div', { className: 'error-msg' }, errorRes),
+
+        !resultado && !errorRes && h('div', { className: 'card estado-vacio' },
+          h('i', { className: 'ti ti-chart-line', 'aria-hidden': 'true' }),
+          h('p', null, 'Completa la consulta a la izquierda y presiona "Ver rendimiento" para ver los resultados aquí.')
+        ),
+
+        // --- resultados ---
+        resultado && h('div', { className: 'card' },
+          h('h2', null, 'Resultado: ' + (empresaActual ? empresaActual.nombre : resultado.empresa)),
+          h('p', { className: 'nota' },
+            formatearFecha(resultado.desde) + ' → ' + formatearFecha(resultado.hasta) + ' (hora local, formato 24 hrs)'
+          ),
+
+
+          h('h3', { style: { marginTop: 0 } }, 'Comparativo de flota'),
+          h('div', { className: 'comparativo' },
+            resultado.comparativo && resultado.comparativo.mejorDia
+              ? h(TarjetaComparativa, {
+                  etiqueta: 'Mejor día',
+                  icono: 'calendar-stats', fondoIcono: 'var(--azul-claro)', colorIcono: 'var(--azul-texto)',
+                  valor: formatearDiaYMD(resultado.comparativo.mejorDia.fecha),
+                  sub: numero(resultado.comparativo.mejorDia.rendimientoKmPorLitro, 2) + ' km/L',
+                  detalle: numero(resultado.comparativo.mejorDia.kmRecorridos, 1) + ' km · ' + numero(resultado.comparativo.mejorDia.litrosConsumidos, 1) + ' L (toda la flota)',
+                })
+              : h(TarjetaComparativa, {
+                  etiqueta: 'Mejor día',
+                  icono: 'calendar-stats', fondoIcono: 'var(--gris-claro)', colorIcono: 'var(--gris)',
+                  valor: '—', detalle: 'Sin datos suficientes en el rango.',
+                }),
+            resultado.comparativo && resultado.comparativo.mejorVehiculo
+              ? h(TarjetaComparativa, {
+                  etiqueta: 'Mejor vehículo',
+                  icono: 'trophy', fondoIcono: 'var(--verde-claro)', colorIcono: 'var(--verde-texto)',
+                  valor: resultado.comparativo.mejorVehiculo.placa,
+                  sub: numero(resultado.comparativo.mejorVehiculo.rendimientoKmPorLitro, 2) + ' km/L (promedio del rango)',
+                  detalle: numero(resultado.comparativo.mejorVehiculo.kmRecorridos, 1) + ' km · ' + numero(resultado.comparativo.mejorVehiculo.litrosConsumidos, 1) + ' L',
+                })
+              : h(TarjetaComparativa, {
+                  etiqueta: 'Mejor vehículo',
+                  icono: 'trophy', fondoIcono: 'var(--gris-claro)', colorIcono: 'var(--gris)',
+                  valor: '—', detalle: 'Sin datos suficientes en el rango.',
+                }),
+            resultado.comparativo && resultado.comparativo.mejorViaje
+              ? h(TarjetaComparativa, {
+                  etiqueta: 'Mejor viaje',
+                  icono: 'route', fondoIcono: 'var(--ambar-claro)', colorIcono: 'var(--ambar-texto)',
+                  valor: numero(resultado.comparativo.mejorViaje.rendimientoKmPorLitro, 2) + ' km/L',
+                  sub: formatearSoloFecha(resultado.comparativo.mejorViaje.inicio) + ', ' + formatearSoloHora(resultado.comparativo.mejorViaje.inicio) + ' → ' + formatearSoloHora(resultado.comparativo.mejorViaje.fin),
+                  detalle: numero(resultado.comparativo.mejorViaje.kmRecorridos, 1) + ' km · ' + numero(resultado.comparativo.mejorViaje.litrosSegunOdolitro, 1) + ' L · ' + resultado.comparativo.mejorViaje.placa + ' (≥' + resultado.comparativo.kmMinimoMejorViaje + ' km)',
+                })
+              : h(TarjetaComparativa, {
+                  etiqueta: 'Mejor viaje',
+                  icono: 'route', fondoIcono: 'var(--gris-claro)', colorIcono: 'var(--gris)',
+                  valor: '—',
+                  detalle: 'Ningún viaje superó el mínimo de ' + (resultado.comparativo ? resultado.comparativo.kmMinimoMejorViaje : 50) + ' km en el rango.',
+                })
+          ),
+
+          h('h3', null, 'Resumen de flota'),
+          h('div', { className: 'resumen-flota' },
+            h(Metrica, {
+              etiqueta: 'horas de motor (flota)', valor: formatearDuracion(resultado.flota.horasMotorMinutos),
+              color: '#378ADD',
+            }),
+            h(Metrica, {
+              etiqueta: 'km totales (flota)', valor: numero(resultado.flota.kmRecorridos, 1),
+              color: '#1D9E75',
+            }),
+            h(Metrica, {
+              etiqueta: 'litros totales (flota)', valor: numero(resultado.flota.litrosConsumidos, 1),
+              color: '#EF9F27',
+            }),
+            h(Metrica, {
+              etiqueta: 'km/L (flota)',
+              valor: resultado.flota.rendimientoKmPorLitro === null ? '—' : numero(resultado.flota.rendimientoKmPorLitro, 2),
+              color: '#378ADD',
+            }),
+            h(Metrica, {
+              etiqueta: 'km/h velocidad promedio',
+              valor: resultado.flota.velocidadPromedio === null ? '—' : numero(resultado.flota.velocidadPromedio, 1),
+              color: '#378ADD',
+            }),
+            h(Metrica, {
+              etiqueta: 'km/h velocidad máxima',
+              valor: resultado.flota.velocidadMaxima === null ? '—' : numero(resultado.flota.velocidadMaxima, 1),
+              color: '#378ADD',
+            }),
+            h(Metrica, {
+              etiqueta: 'ralentí (flota)', valor: formatearDuracion(resultado.flota.ralentiMinutos),
+              color: '#E24B4A',
+            }),
+            h(Metrica, {
+              etiqueta: 'aceleración en vacío (flota)', valor: formatearDuracion(resultado.flota.aceleracionVacioMinutos),
+              color: '#EF9F27',
+            }),
+            h(Metrica, {
+              etiqueta: 'conducción rentable (flota)', valor: formatearDuracion(resultado.flota.conduccionRentableMinutos),
+              color: '#1D9E75',
+            }),
+            h(Metrica, {
+              etiqueta: 'conducción no rentable (flota)', valor: formatearDuracion(resultado.flota.conduccionNoRentableMinutos),
+              color: '#E24B4A',
+            })
+          ),
+
+          h('h3', null, 'Por vehículo (haz clic en una fila para ver detalle de viajes)'),
+          h('div', { className: 'tabla-wrap' },
+            h('table', null,
+              h('thead', null,
+                h('tr', null,
+                  h('th', null, 'Placa'),
+                  h('th', null, 'km'),
+                  h('th', null, 'Litros'),
+                  h('th', null, 'km/L'),
+                  h('th', null, 'Vel. máxima'),
+                  h('th', null, 'Horas motor'),
+                  h('th', null, 'Ralentí'),
+                  h('th', null, 'Acel. en vacío'),
+                  h('th', null, 'Cond. rentable'),
+                  h('th', null, 'Cond. no rentable'),
+                  h('th', null, 'Estado')
+                )
+              ),
+              h('tbody', null,
+                resultado.vehiculos.map(function (v) {
+                  return h(FilaVehiculo, {
+                    key: v.placa,
+                    vehiculo: v,
+                    expandido: expandidoPlaca === v.placa,
+                    onToggle: function () {
+                      setExpandidoPlaca(expandidoPlaca === v.placa ? null : v.placa);
+                    },
+                  });
+                })
+              )
+            )
+          ),
+
+          h('h3', null, 'Velocidad en el tiempo'),
+          h(GraficoVelocidad, { vehiculos: resultado.vehiculos }),
+          h('p', { className: 'nota' }, 'Los datos se muestrean para el gráfico si hay muchos puntos; los cálculos de rendimiento usan todos los registros.')
+        )
+      )
+    );
+  }
+
+  ReactDOM.createRoot(document.getElementById('root')).render(h(App));
+</script>
+</body>
+</html>
