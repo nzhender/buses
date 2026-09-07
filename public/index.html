@@ -96,6 +96,7 @@
   .nav-item i { font-size: 16px; }
   .card-sidebar {
     margin-bottom: 0;
+    padding: 20px 18px;
   }
 
   /* --- main --- */
@@ -138,12 +139,17 @@
   }
   .bloque { margin-bottom: 18px; }
   .fila-hora {
-    display: grid;
-    grid-template-columns: 1fr 70px 12px 70px;
-    gap: 6px;
-    align-items: center;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
   }
-  .fila-hora .sep { text-align: center; color: var(--gris); font-weight: 600; }
+  .campo-hora {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .campo-hora select { width: 72px; flex: 0 0 72px; }
+  .campo-hora .sep { color: var(--gris); font-weight: 600; }
   .fila-fechas {
     display: grid;
     grid-template-columns: 1fr;
@@ -429,19 +435,19 @@
           onChange: function (e) { props.onFecha(e.target.value); },
         })
       ),
-      h('select', {
-        value: props.hora,
-        onChange: function (e) { props.onHora(e.target.value); },
-        'aria-label': 'Hora (' + props.etiqueta + ')',
-        style: { marginTop: '20px' },
-      }, HORAS.map(function (v) { return h('option', { key: v, value: v }, v); })),
-      h('div', { className: 'sep', style: { marginTop: '20px' } }, ':'),
-      h('select', {
-        value: props.minuto,
-        onChange: function (e) { props.onMinuto(e.target.value); },
-        'aria-label': 'Minutos (' + props.etiqueta + ')',
-        style: { marginTop: '20px' },
-      }, MINUTOS.map(function (v) { return h('option', { key: v, value: v }, v); }))
+      h('div', { className: 'campo-hora' },
+        h('select', {
+          value: props.hora,
+          onChange: function (e) { props.onHora(e.target.value); },
+          'aria-label': 'Hora (' + props.etiqueta + ')',
+        }, HORAS.map(function (v) { return h('option', { key: v, value: v }, v); })),
+        h('span', { className: 'sep' }, ':'),
+        h('select', {
+          value: props.minuto,
+          onChange: function (e) { props.onMinuto(e.target.value); },
+          'aria-label': 'Minutos (' + props.etiqueta + ')',
+        }, MINUTOS.map(function (v) { return h('option', { key: v, value: v }, v); }))
+      )
     );
   }
 
