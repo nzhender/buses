@@ -255,20 +255,17 @@
     align-items: center;
     gap: 20px;
   }
-  .dona-svg { width: 160px; height: 160px; flex-shrink: 0; }
+  .dona-svg { width: 200px; height: 200px; flex-shrink: 0; }
   .dona-leyenda {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-  .dona-leyenda-item {
-    display: flex;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    row-gap: 10px;
+    column-gap: 10px;
     align-items: center;
-    gap: 8px;
-    font-size: 12px;
-    color: var(--gris);
   }
-  .dona-leyenda-item strong { margin-left: auto; color: #10151C; font-size: 13px; padding-left: 12px; }
+  .dona-leyenda-item { display: contents; }
+  .dona-leyenda-item span:not(.dona-punto) { font-size: 12px; color: var(--gris); }
+  .dona-leyenda-item strong { text-align: right; color: #10151C; font-size: 13px; white-space: nowrap; }
   .dona-punto { width: 9px; height: 9px; border-radius: 3px; flex-shrink: 0; }
   .comparativo {
     display: grid;
@@ -645,18 +642,33 @@
     var pctNoRentable = horas > 0 ? (f.conduccionNoRentableMinutos / horas) * 100 : 0;
     var pctAccelVacio = horas > 0 ? (f.aceleracionVacioMinutos / horas) * 100 : 0;
 
-    // circunferencia de un círculo r=58 ≈ 364.4, usada para los stroke-dasharray
-    var CIRC = 364.4;
-    var R = 58;
-    var GROSOR = 24;
-    var C = 80; // centro del viewBox (0 0 160 160)
-    var segRentable = (pctRentable / 100) * CIRC;
-    var segRalenti = (pctRalenti / 100) * CIRC;
-    var segNoRentable = (pctNoRentable / 100) * CIRC;
-    var segAccelVacio = (pctAccelVacio / 100) * CIRC;
-    var offRalenti = -segRentable;
-    var offNoRentable = -(segRentable + segRalenti);
-    var offAccelVacio = -(segRentable + segRalenti + segNoRentable);
+    // circunferencia de un círculo r=70 ≈ 439.8, usada para los stroke-dasharray
+    var CIRC = 439.8;
+    var R = 70;
+    var GROSOR = 26;
+    var C = 100; // centro del viewBox (0 0 200 200)
+
+    var segRentableCrudo = (pctRentable / 100) * CIRC;
+    var segRalentiCrudo = (pctRalenti / 100) * CIRC;
+    var segNoRentableCrudo = (pctNoRentable / 100) * CIRC;
+    var segAccelVacioCrudo = (pctAccelVacio / 100) * CIRC;
+
+    // Ancho mínimo VISIBLE para cualquier segmento con valor > 0: sin esto,
+    // categorías reales pero muy chicas (ej. "no rentable" de solo minutos
+    // en un total de decenas de horas) quedan con un arco de menos de un
+    // píxel y se ven como si no existieran. El valor exacto se sigue
+    // mostrando en la leyenda; esto solo asegura que el color se note.
+    var MIN_VISIBLE = CIRC * 0.012;
+    function anchoVisible(seg) {
+      return seg > 0 && seg < MIN_VISIBLE ? MIN_VISIBLE : seg;
+    }
+
+    // los offsets (dónde empieza cada arco) se calculan con los anchos
+    // reales (no con el mínimo visible), para no desalinear el orden de la
+    // dona por el ajuste de segmentos pequeños.
+    var offRalenti = -segRentableCrudo;
+    var offNoRentable = -(segRentableCrudo + segRalentiCrudo);
+    var offAccelVacio = -(segRentableCrudo + segRalentiCrudo + segNoRentableCrudo);
 
     return h('div', { className: 'resumen-flota' },
       h('div', { className: 'resumen-calugas' },
@@ -674,30 +686,30 @@
         )
       ),
       h('div', { className: 'resumen-dona' },
-        h('svg', { viewBox: '0 0 160 160', className: 'dona-svg' },
+        h('svg', { viewBox: '0 0 200 200', className: 'dona-svg' },
           h('circle', { cx: C, cy: C, r: R, fill: 'none', stroke: '#eee', strokeWidth: GROSOR }),
           horas > 0 && h('circle', {
             cx: C, cy: C, r: R, fill: 'none', stroke: '#1D9E75', strokeWidth: GROSOR,
-            strokeDasharray: segRentable + ' ' + CIRC, strokeDashoffset: 0,
+            strokeDasharray: anchoVisible(segRentableCrudo) + ' ' + CIRC, strokeDashoffset: 0,
             transform: 'rotate(-90 ' + C + ' ' + C + ')',
           }),
           horas > 0 && h('circle', {
             cx: C, cy: C, r: R, fill: 'none', stroke: '#EF9F27', strokeWidth: GROSOR,
-            strokeDasharray: segRalenti + ' ' + CIRC, strokeDashoffset: offRalenti,
+            strokeDasharray: anchoVisible(segRalentiCrudo) + ' ' + CIRC, strokeDashoffset: offRalenti,
             transform: 'rotate(-90 ' + C + ' ' + C + ')',
           }),
           horas > 0 && h('circle', {
             cx: C, cy: C, r: R, fill: 'none', stroke: '#E24B4A', strokeWidth: GROSOR,
-            strokeDasharray: segNoRentable + ' ' + CIRC, strokeDashoffset: offNoRentable,
+            strokeDasharray: anchoVisible(segNoRentableCrudo) + ' ' + CIRC, strokeDashoffset: offNoRentable,
             transform: 'rotate(-90 ' + C + ' ' + C + ')',
           }),
           horas > 0 && h('circle', {
             cx: C, cy: C, r: R, fill: 'none', stroke: '#378ADD', strokeWidth: GROSOR,
-            strokeDasharray: segAccelVacio + ' ' + CIRC, strokeDashoffset: offAccelVacio,
+            strokeDasharray: anchoVisible(segAccelVacioCrudo) + ' ' + CIRC, strokeDashoffset: offAccelVacio,
             transform: 'rotate(-90 ' + C + ' ' + C + ')',
           }),
-          h('text', { x: C, y: C - 4, textAnchor: 'middle', fontSize: 21, fontWeight: 600, fill: '#10151C' }, formatearDuracion(f.horasMotorMinutos)),
-          h('text', { x: C, y: C + 16, textAnchor: 'middle', fontSize: 11, fill: '#9ca3af' }, 'motor')
+          h('text', { x: C, y: C - 5, textAnchor: 'middle', fontSize: 22, fontWeight: 600, fill: '#10151C' }, formatearDuracion(f.horasMotorMinutos)),
+          h('text', { x: C, y: C + 17, textAnchor: 'middle', fontSize: 12, fill: '#9ca3af' }, 'motor')
         ),
         h('div', { className: 'dona-leyenda' },
           h('div', { className: 'dona-leyenda-item' },
