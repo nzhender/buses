@@ -6,7 +6,6 @@
 <title>Rendimiento de Buses</title>
 <script src="https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/2.47.0/iconfont/tabler-icons.min.css" />
 <style>
   :root {
@@ -229,13 +228,48 @@
 
   .resumen-flota {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-    gap: 20px 24px;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
     margin-bottom: 8px;
+    align-items: center;
   }
-  @media (max-width: 900px) {
-    .resumen-flota { grid-template-columns: repeat(2, 1fr); }
+  @media (max-width: 720px) {
+    .resumen-flota { grid-template-columns: 1fr; }
   }
+  .resumen-calugas {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .caluga {
+    border-radius: 999px;
+    padding: 14px 22px;
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+  .caluga-valor { font-size: 20px; font-weight: 600; color: #10151C; }
+  .caluga-etiqueta { font-size: 12px; color: var(--gris); }
+  .resumen-dona {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+  .dona-svg { width: 120px; height: 120px; flex-shrink: 0; }
+  .dona-leyenda {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .dona-leyenda-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--gris);
+  }
+  .dona-leyenda-item strong { margin-left: auto; color: #10151C; font-size: 13px; padding-left: 12px; }
+  .dona-punto { width: 9px; height: 9px; border-radius: 3px; flex-shrink: 0; }
   .comparativo {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -336,23 +370,6 @@
     gap: 16px 20px;
   }
 
-  .historia-motor { margin-bottom: 28px; }
-  .historia-bar {
-    display: flex;
-    height: 14px;
-    border-radius: 8px;
-    overflow: hidden;
-    margin-bottom: 10px;
-  }
-  .historia-bar-vacia { background: var(--gris-claro); }
-  .historia-leyenda {
-    display: flex;
-    gap: 16px;
-    flex-wrap: wrap;
-    font-size: 12px;
-    color: var(--gris);
-  }
-
   .viajes-detalle { background: var(--gris-claro); }
   .viajes-detalle td { padding: 4px 14px 4px 34px; font-size: 12px; }
   .tabla-viajes {
@@ -382,7 +399,9 @@
     color: #111827;
   }
   .tabla-viajes tr:last-child td { border-bottom: none; }
-  .chart-wrap { position: relative; height: 320px; margin-top: 10px; }
+  .coord-link { color: #378ADD; text-decoration: none; font-size: 11px; white-space: nowrap; }
+  .coord-link:hover { text-decoration: underline; }
+  .coord-localidad { font-size: 12px; font-weight: 600; color: #10151C; white-space: nowrap; }
   .nota { font-size: 12px; color: var(--gris); margin-top: 8px; }
 </style>
 </head>
@@ -424,6 +443,19 @@
     return d.toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' });
   }
 
+  // Renderiza una coordenada {lat, lon, localidad?} como enlace a Google
+  // Maps; si se resolvió la localidad (comuna/ciudad), se muestra arriba del
+  // link. Si no hay coordenada válida (GPS perdido en ese punto), un guión.
+  function enlaceCoordenada(coord) {
+    if (!coord) return '—';
+    var texto = coord.lat.toFixed(5) + ', ' + coord.lon.toFixed(5);
+    var url = 'https://www.google.com/maps?q=' + coord.lat + ',' + coord.lon;
+    return h('div', null,
+      coord.localidad && h('div', { className: 'coord-localidad' }, coord.localidad),
+      h('a', { href: url, target: '_blank', rel: 'noopener noreferrer', className: 'coord-link' }, texto)
+    );
+  }
+
   function formatearFechaHoy() {
     var d = new Date();
     var texto = d.toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
@@ -442,15 +474,6 @@
     var horas = Math.floor(minutos / 60);
     var mins = Math.round(minutos % 60);
     return horas + 'h ' + mins + 'min';
-  }
-
-  // muestrea una serie para no pintar miles de puntos en el gráfico
-  function muestrear(serie, maxPuntos) {
-    if (!serie || serie.length <= maxPuntos) return serie || [];
-    var paso = Math.ceil(serie.length / maxPuntos);
-    var out = [];
-    for (var i = 0; i < serie.length; i += paso) out.push(serie[i]);
-    return out;
   }
 
   // combina un input date (YYYY-MM-DD) + hora (00-23) + minuto (00-59), en
@@ -523,64 +546,6 @@
     );
   }
 
-  // --- componente: gráfico de velocidad (Chart.js, sin wrapper de React) ---
-
-  function GraficoVelocidad(props) {
-    var canvasRef = useRef(null);
-    var chartRef = useRef(null);
-
-    useEffect(function () {
-      if (!canvasRef.current) return;
-      if (chartRef.current) {
-        chartRef.current.destroy();
-      }
-
-      var datasets = props.vehiculos.map(function (v, idx) {
-        var colores = ['#1d9e75', '#0c447c', '#633806', '#791f1f', '#534ab7', '#993556'];
-        var color = colores[idx % colores.length];
-        var puntos = muestrear(v.serieVelocidad, 150);
-        return {
-          label: v.placa,
-          data: puntos.map(function (p) { return p.v; }),
-          borderColor: color,
-          backgroundColor: color,
-          borderWidth: 1.5,
-          pointRadius: 0,
-          tension: 0.15,
-        };
-      });
-
-      var etiquetas = [];
-      if (props.vehiculos[0]) {
-        etiquetas = muestrear(props.vehiculos[0].serieVelocidad, 150).map(function (p) {
-          return formatearFecha(p.t);
-        });
-      }
-
-      chartRef.current = new Chart(canvasRef.current, {
-        type: 'line',
-        data: { labels: etiquetas, datasets: datasets },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          animation: false,
-          scales: {
-            y: { title: { display: true, text: 'km/h' } },
-          },
-          plugins: {
-            legend: { position: 'bottom' },
-          },
-        },
-      });
-
-      return function () {
-        if (chartRef.current) chartRef.current.destroy();
-      };
-    }, [props.vehiculos]);
-
-    return h('div', { className: 'chart-wrap' }, h('canvas', { ref: canvasRef }));
-  }
-
   // --- componente: fila de vehículo con detalle de viajes expandible ---
 
   var MEDALLAS = ['🥇', '🥈', '🥉'];
@@ -635,12 +600,6 @@
           h(Metrica, { etiqueta: 'conducción no rentable', valor: formatearDuracion(v.conduccionNoRentableMinutos), color: '#E24B4A' })
         ),
 
-        tieneAvisos && h('div', { style: { marginTop: '16px' } },
-          v.advertencias.map(function (a, i) {
-            return h('div', { key: 'adv-' + i, className: 'aviso-msg', style: { marginBottom: '6px' } }, '⚠ ' + a);
-          })
-        ),
-
         h('div', { style: { marginTop: '16px' } },
           h('strong', { style: { fontSize: '13px' } }, (v.viajes || []).length + ' viaje(s) detectado(s) en el rango'),
           (v.viajes || []).length > 0 && h('table', { className: 'tabla-viajes' },
@@ -651,7 +610,9 @@
                 h('th', null, 'Término'),
                 h('th', null, 'km recorridos'),
                 h('th', null, 'Litros consumidos'),
-                h('th', null, 'Rendimiento')
+                h('th', null, 'Rendimiento'),
+                h('th', null, 'Origen'),
+                h('th', null, 'Destino')
               )
             ),
             h('tbody', null,
@@ -662,10 +623,99 @@
                   h('td', null, formatearSoloHora(viaje.fin)),
                   h('td', null, numero(viaje.kmRecorridos, 1)),
                   h('td', null, numero(viaje.litrosSegunOdolitro, 1)),
-                  h('td', null, viaje.rendimientoKmPorLitro !== null ? numero(viaje.rendimientoKmPorLitro, 2) + ' km/L' : '—')
+                  h('td', null, viaje.rendimientoKmPorLitro !== null ? numero(viaje.rendimientoKmPorLitro, 2) + ' km/L' : '—'),
+                  h('td', null, enlaceCoordenada(viaje.coordenadaInicio)),
+                  h('td', null, enlaceCoordenada(viaje.coordenadaFin))
                 );
               })
             )
+          )
+        )
+      )
+    );
+  }
+
+  // --- componente: resumen de flota (3 calugas + dona de reparto de tiempo) ---
+
+  function ResumenFlota(props) {
+    var f = props.flota;
+    var horas = f.horasMotorMinutos || 0;
+    var pctRentable = horas > 0 ? (f.conduccionRentableMinutos / horas) * 100 : 0;
+    var pctRalenti = horas > 0 ? (f.ralentiMinutos / horas) * 100 : 0;
+    var pctNoRentable = horas > 0 ? (f.conduccionNoRentableMinutos / horas) * 100 : 0;
+    var pctAccelVacio = horas > 0 ? (f.aceleracionVacioMinutos / horas) * 100 : 0;
+
+    // circunferencia de un círculo r=45 ≈ 282.7, usada para los stroke-dasharray
+    var CIRC = 282.7;
+    var segRentable = (pctRentable / 100) * CIRC;
+    var segRalenti = (pctRalenti / 100) * CIRC;
+    var segNoRentable = (pctNoRentable / 100) * CIRC;
+    var segAccelVacio = (pctAccelVacio / 100) * CIRC;
+    var offRalenti = -segRentable;
+    var offNoRentable = -(segRentable + segRalenti);
+    var offAccelVacio = -(segRentable + segRalenti + segNoRentable);
+
+    return h('div', { className: 'resumen-flota' },
+      h('div', { className: 'resumen-calugas' },
+        h('div', { className: 'caluga', style: { background: '#E6F1FB' } },
+          h('div', { className: 'caluga-valor' }, formatearDuracion(f.horasMotorMinutos)),
+          h('div', { className: 'caluga-etiqueta' }, 'horas de motor')
+        ),
+        h('div', { className: 'caluga', style: { background: '#EAF3DE' } },
+          h('div', { className: 'caluga-valor' }, numero(f.kmRecorridos, 1)),
+          h('div', { className: 'caluga-etiqueta' }, 'km recorridos')
+        ),
+        h('div', { className: 'caluga', style: { background: '#FFF9EC' } },
+          h('div', { className: 'caluga-valor' }, f.rendimientoKmPorLitro === null ? '—' : numero(f.rendimientoKmPorLitro, 2)),
+          h('div', { className: 'caluga-etiqueta' }, 'km/L')
+        )
+      ),
+      h('div', { className: 'resumen-dona' },
+        h('svg', { viewBox: '0 0 120 120', className: 'dona-svg' },
+          h('circle', { cx: 60, cy: 60, r: 45, fill: 'none', stroke: '#eee', strokeWidth: 16 }),
+          horas > 0 && h('circle', {
+            cx: 60, cy: 60, r: 45, fill: 'none', stroke: '#1D9E75', strokeWidth: 16,
+            strokeDasharray: segRentable + ' ' + CIRC, strokeDashoffset: 0,
+            transform: 'rotate(-90 60 60)',
+          }),
+          horas > 0 && h('circle', {
+            cx: 60, cy: 60, r: 45, fill: 'none', stroke: '#EF9F27', strokeWidth: 16,
+            strokeDasharray: segRalenti + ' ' + CIRC, strokeDashoffset: offRalenti,
+            transform: 'rotate(-90 60 60)',
+          }),
+          horas > 0 && h('circle', {
+            cx: 60, cy: 60, r: 45, fill: 'none', stroke: '#E24B4A', strokeWidth: 16,
+            strokeDasharray: segNoRentable + ' ' + CIRC, strokeDashoffset: offNoRentable,
+            transform: 'rotate(-90 60 60)',
+          }),
+          horas > 0 && h('circle', {
+            cx: 60, cy: 60, r: 45, fill: 'none', stroke: '#378ADD', strokeWidth: 16,
+            strokeDasharray: segAccelVacio + ' ' + CIRC, strokeDashoffset: offAccelVacio,
+            transform: 'rotate(-90 60 60)',
+          }),
+          h('text', { x: 60, y: 56, textAnchor: 'middle', fontSize: 18, fontWeight: 500, fill: '#10151C' }, formatearDuracion(f.horasMotorMinutos)),
+          h('text', { x: 60, y: 72, textAnchor: 'middle', fontSize: 9, fill: '#9ca3af' }, 'motor')
+        ),
+        h('div', { className: 'dona-leyenda' },
+          h('div', { className: 'dona-leyenda-item' },
+            h('span', { className: 'dona-punto', style: { background: '#1D9E75' } }),
+            h('span', null, 'Conducción rentable'),
+            h('strong', null, formatearDuracion(f.conduccionRentableMinutos))
+          ),
+          h('div', { className: 'dona-leyenda-item' },
+            h('span', { className: 'dona-punto', style: { background: '#EF9F27' } }),
+            h('span', null, 'Ralentí'),
+            h('strong', null, formatearDuracion(f.ralentiMinutos))
+          ),
+          h('div', { className: 'dona-leyenda-item' },
+            h('span', { className: 'dona-punto', style: { background: '#378ADD' } }),
+            h('span', null, 'Aceleración en vacío'),
+            h('strong', null, formatearDuracion(f.aceleracionVacioMinutos))
+          ),
+          h('div', { className: 'dona-leyenda-item' },
+            h('span', { className: 'dona-punto', style: { background: '#E24B4A' } }),
+            h('span', null, 'Conducción no rentable'),
+            h('strong', null, formatearDuracion(f.conduccionNoRentableMinutos))
           )
         )
       )
@@ -916,8 +966,7 @@
 
         h('div', { className: 'encabezado' },
           h('div', null,
-            h('h1', null, 'Rendimiento de buses'),
-            h('p', null, 'Consulta rendimiento (km/L) y velocidad por empresa y vehículo')
+            h('h1', null, 'Rendimiento de buses')
           ),
           h('div', { className: 'fecha-hoy' }, formatearFechaHoy())
         ),
@@ -932,41 +981,9 @@
         // --- resultados ---
         resultado && h('div', { className: 'card' },
           h('h2', null, 'Resultado: ' + (empresaActual ? empresaActual.nombre : resultado.empresa)),
-          h('p', { className: 'nota' },
-            formatearFecha(resultado.desde) + ' → ' + formatearFecha(resultado.hasta) + ' (hora local, formato 24 hrs)'
-          ),
 
 
-          h('h3', { style: { marginTop: 0 } }, '¿Cómo se usó el motor en el rango consultado?'),
-          (function () {
-            var f = resultado.flota;
-            var horas = f.horasMotorMinutos || 0;
-            var pctRentable = horas > 0 ? (f.conduccionRentableMinutos / horas) * 100 : 0;
-            var pctRalenti = horas > 0 ? (f.ralentiMinutos / horas) * 100 : 0;
-            var pctNoRentable = horas > 0 ? (f.conduccionNoRentableMinutos / horas) * 100 : 0;
-            var pctAccelVacio = horas > 0 ? (f.aceleracionVacioMinutos / horas) * 100 : 0;
-            return h('div', { className: 'historia-motor' },
-              h('p', { className: 'nota', style: { marginTop: 0, marginBottom: '10px' } },
-                formatearDuracion(f.horasMotorMinutos) + ' totales de motor encendido (' + f.vehiculos + ' unidad(es))'
-              ),
-              horas > 0
-                ? h('div', { className: 'historia-bar' },
-                    h('div', { style: { width: pctRentable + '%', background: '#1D9E75' } }),
-                    h('div', { style: { width: pctRalenti + '%', background: '#EF9F27' } }),
-                    h('div', { style: { width: pctNoRentable + '%', background: '#E24B4A' } }),
-                    h('div', { style: { width: pctAccelVacio + '%', background: '#378ADD' } })
-                  )
-                : h('div', { className: 'historia-bar historia-bar-vacia' }),
-              h('div', { className: 'historia-leyenda' },
-                h('span', null, '🟢 Rentable ' + numero(pctRentable, 0) + '%'),
-                h('span', null, '🟠 Ralentí ' + numero(pctRalenti, 0) + '%'),
-                h('span', null, '🔴 No rentable ' + numero(pctNoRentable, 0) + '%'),
-                h('span', null, '🔵 Acel. vacío ' + numero(pctAccelVacio, 0) + '%')
-              )
-            );
-          })(),
-
-          h('h3', null, 'Comparativo de flota'),
+          h('h3', { style: { marginTop: 0 } }, 'Comparativo de flota'),
           h('div', { className: 'comparativo' },
             resultado.comparativo && resultado.comparativo.mejorDia
               ? h(TarjetaComparativa, {
@@ -1008,51 +1025,7 @@
           ),
 
           h('h3', null, 'Resumen de flota'),
-          h('div', { className: 'resumen-flota' },
-            h(Metrica, {
-              etiqueta: 'horas de motor (flota)', valor: formatearDuracion(resultado.flota.horasMotorMinutos),
-              color: '#378ADD',
-            }),
-            h(Metrica, {
-              etiqueta: 'km totales (flota)', valor: numero(resultado.flota.kmRecorridos, 1),
-              color: '#1D9E75',
-            }),
-            h(Metrica, {
-              etiqueta: 'litros totales (flota)', valor: numero(resultado.flota.litrosConsumidos, 1),
-              color: '#EF9F27',
-            }),
-            h(Metrica, {
-              etiqueta: 'km/L (flota)',
-              valor: resultado.flota.rendimientoKmPorLitro === null ? '—' : numero(resultado.flota.rendimientoKmPorLitro, 2),
-              color: '#378ADD',
-            }),
-            h(Metrica, {
-              etiqueta: 'km/h velocidad promedio',
-              valor: resultado.flota.velocidadPromedio === null ? '—' : numero(resultado.flota.velocidadPromedio, 1),
-              color: '#378ADD',
-            }),
-            h(Metrica, {
-              etiqueta: 'km/h velocidad máxima',
-              valor: resultado.flota.velocidadMaxima === null ? '—' : numero(resultado.flota.velocidadMaxima, 1),
-              color: '#378ADD',
-            }),
-            h(Metrica, {
-              etiqueta: 'ralentí (flota)', valor: formatearDuracion(resultado.flota.ralentiMinutos),
-              color: '#E24B4A',
-            }),
-            h(Metrica, {
-              etiqueta: 'aceleración en vacío (flota)', valor: formatearDuracion(resultado.flota.aceleracionVacioMinutos),
-              color: '#EF9F27',
-            }),
-            h(Metrica, {
-              etiqueta: 'conducción rentable (flota)', valor: formatearDuracion(resultado.flota.conduccionRentableMinutos),
-              color: '#1D9E75',
-            }),
-            h(Metrica, {
-              etiqueta: 'conducción no rentable (flota)', valor: formatearDuracion(resultado.flota.conduccionNoRentableMinutos),
-              color: '#E24B4A',
-            })
-          ),
+          h(ResumenFlota, { flota: resultado.flota }),
 
           h('h3', null, 'Ranking de flota (haz clic en una placa para ver el detalle completo)'),
           h('div', { className: 'ranking-wrap' },
@@ -1075,11 +1048,7 @@
                   },
                 });
               })
-          ),
-
-          h('h3', null, 'Velocidad en el tiempo'),
-          h(GraficoVelocidad, { vehiculos: resultado.vehiculos }),
-          h('p', { className: 'nota' }, 'Los datos se muestrean para el gráfico si hay muchos puntos; los cálculos de rendimiento usan todos los registros.')
+          )
         )
       )
     );
