@@ -468,14 +468,25 @@ function agregarFlota(resultadosPorVehiculo) {
 }
 
 /**
- * Clave de agrupación por día calendario, a partir del timestamp UTC del
- * evento (los primeros 10 caracteres de un ISO 8601 son 'YYYY-MM-DD').
- * Nota: agrupa por fecha UTC, no por fecha local de Chile — en el borde de
- * medianoche un viaje podría quedar contado en el día "equivocado" en hora
- * local, pero es consistente y suficiente para comparar días entre sí.
+ * Clave de agrupación por día calendario, en hora LOCAL DE CHILE (no UTC).
+ * Es necesario convertir explícitamente a America/Santiago, sin asumir que
+ * el servidor corre en esa zona horaria (en producción normalmente corre en
+ * UTC), porque de lo contrario un viaje que en Chile ocurre, por ejemplo, el
+ * 2 de septiembre tarde en la noche puede caer en el 3 de septiembre en UTC
+ * (Chile va detrás de UTC) y "ganar" el destacado de mejor día aunque esté
+ * fuera del rango pedido en hora local.
  */
+const FORMATO_DIA_CHILE = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'America/Santiago',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
+
 function claveDia(evento) {
-  return evento.gps_utc_time.slice(0, 10);
+  // El locale 'en-CA' formatea como 'YYYY-MM-DD', que es lo que necesitamos
+  // como clave ordenable y comparable.
+  return FORMATO_DIA_CHILE.format(new Date(evento.gps_utc_time));
 }
 
 /**
