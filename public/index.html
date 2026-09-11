@@ -666,9 +666,17 @@
     // los offsets (dónde empieza cada arco) se calculan con los anchos
     // reales (no con el mínimo visible), para no desalinear el orden de la
     // dona por el ajuste de segmentos pequeños.
-    var offRalenti = -segRentableCrudo;
-    var offNoRentable = -(segRentableCrudo + segRalentiCrudo);
-    var offAccelVacio = -(segRentableCrudo + segRalentiCrudo + segNoRentableCrudo);
+    var segmentos = [
+      { color: '#1D9E75', crudo: segRentableCrudo, offset: 0 },
+      { color: '#EF9F27', crudo: segRalentiCrudo, offset: -segRentableCrudo },
+      { color: '#E24B4A', crudo: segNoRentableCrudo, offset: -(segRentableCrudo + segRalentiCrudo) },
+      { color: '#378ADD', crudo: segAccelVacioCrudo, offset: -(segRentableCrudo + segRalentiCrudo + segNoRentableCrudo) },
+    ];
+
+    // se pintan del más chico al más grande: así, si un segmento diminuto
+    // se agranda para ser visible (anchoVisible) y se superpone sobre su
+    // vecino, queda ENCIMA en vez de que el vecino más grande lo tape.
+    var segmentosOrdenados = segmentos.slice().sort(function (a, b) { return a.crudo - b.crudo; });
 
     return h('div', { className: 'resumen-flota' },
       h('div', { className: 'resumen-calugas' },
@@ -688,25 +696,13 @@
       h('div', { className: 'resumen-dona' },
         h('svg', { viewBox: '0 0 200 200', className: 'dona-svg' },
           h('circle', { cx: C, cy: C, r: R, fill: 'none', stroke: '#eee', strokeWidth: GROSOR }),
-          horas > 0 && h('circle', {
-            cx: C, cy: C, r: R, fill: 'none', stroke: '#1D9E75', strokeWidth: GROSOR,
-            strokeDasharray: anchoVisible(segRentableCrudo) + ' ' + CIRC, strokeDashoffset: 0,
-            transform: 'rotate(-90 ' + C + ' ' + C + ')',
-          }),
-          horas > 0 && h('circle', {
-            cx: C, cy: C, r: R, fill: 'none', stroke: '#EF9F27', strokeWidth: GROSOR,
-            strokeDasharray: anchoVisible(segRalentiCrudo) + ' ' + CIRC, strokeDashoffset: offRalenti,
-            transform: 'rotate(-90 ' + C + ' ' + C + ')',
-          }),
-          horas > 0 && h('circle', {
-            cx: C, cy: C, r: R, fill: 'none', stroke: '#E24B4A', strokeWidth: GROSOR,
-            strokeDasharray: anchoVisible(segNoRentableCrudo) + ' ' + CIRC, strokeDashoffset: offNoRentable,
-            transform: 'rotate(-90 ' + C + ' ' + C + ')',
-          }),
-          horas > 0 && h('circle', {
-            cx: C, cy: C, r: R, fill: 'none', stroke: '#378ADD', strokeWidth: GROSOR,
-            strokeDasharray: anchoVisible(segAccelVacioCrudo) + ' ' + CIRC, strokeDashoffset: offAccelVacio,
-            transform: 'rotate(-90 ' + C + ' ' + C + ')',
+          horas > 0 && segmentosOrdenados.map(function (seg, i) {
+            return h('circle', {
+              key: i,
+              cx: C, cy: C, r: R, fill: 'none', stroke: seg.color, strokeWidth: GROSOR,
+              strokeDasharray: anchoVisible(seg.crudo) + ' ' + CIRC, strokeDashoffset: seg.offset,
+              transform: 'rotate(-90 ' + C + ' ' + C + ')',
+            });
           }),
           h('text', { x: C, y: C - 5, textAnchor: 'middle', fontSize: 22, fontWeight: 600, fill: '#10151C' }, formatearDuracion(f.horasMotorMinutos)),
           h('text', { x: C, y: C + 17, textAnchor: 'middle', fontSize: 12, fill: '#9ca3af' }, 'motor')
