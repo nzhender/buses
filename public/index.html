@@ -246,28 +246,15 @@
     .comparativo { grid-template-columns: 1fr; }
   }
   .comparativo-card {
-    background: white;
-    border: 0.5px solid var(--borde);
+    border: none;
     border-radius: 16px;
     padding: 20px;
+    text-align: center;
   }
-  .comparativo-top {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 12px;
-  }
-  .comparativo-icono { font-size: 16px; flex-shrink: 0; }
-  .comparativo-etiqueta { font-size: 12px; color: var(--gris); }
-  .comparativo-valor { font-size: 22px; font-weight: 500; }
-  .comparativo-sub { font-size: 13px; color: var(--gris); margin-top: 4px; }
-  .comparativo-detalle {
-    font-size: 12px;
-    color: #9ca3af;
-    margin-top: 10px;
-    border-top: 0.5px solid var(--borde);
-    padding-top: 10px;
-  }
+  .comparativo-emoji { font-size: 26px; margin-bottom: 6px; }
+  .comparativo-etiqueta { font-size: 12px; color: var(--gris); margin-bottom: 2px; }
+  .comparativo-valor { font-size: 15px; font-weight: 600; }
+  .comparativo-detalle { font-size: 12px; color: var(--gris); margin-top: 4px; }
   .metrica {
     border-left: 3px solid var(--acento, var(--verde));
     padding-left: 14px;
@@ -337,6 +324,7 @@
   }
   .ranking-barra-vacia { background: var(--gris-claro); }
   .ranking-valor { font-size: 13px; font-weight: 600; width: 90px; text-align: right; flex-shrink: 0; }
+  .ranking-aviso-slot { width: 16px; flex-shrink: 0; display: flex; justify-content: center; }
   .ranking-detalle {
     padding: 16px 18px 20px;
     background: var(--fondo);
@@ -346,6 +334,23 @@
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
     gap: 16px 20px;
+  }
+
+  .historia-motor { margin-bottom: 28px; }
+  .historia-bar {
+    display: flex;
+    height: 14px;
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+  .historia-bar-vacia { background: var(--gris-claro); }
+  .historia-leyenda {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    font-size: 12px;
+    color: var(--gris);
   }
 
   .viajes-detalle { background: var(--gris-claro); }
@@ -510,14 +515,11 @@
   // vehículo / mejor viaje) ---
 
   function TarjetaComparativa(props) {
-    return h('div', { className: 'comparativo-card' },
-      h('div', { className: 'comparativo-top' },
-        h('i', { className: 'comparativo-icono ti ti-' + props.icono, style: { color: props.colorIcono }, 'aria-hidden': 'true' }),
-        h('span', { className: 'comparativo-etiqueta' }, props.etiqueta)
-      ),
+    return h('div', { className: 'comparativo-card', style: { background: props.fondo } },
+      h('div', { className: 'comparativo-emoji' }, props.emoji),
+      h('div', { className: 'comparativo-etiqueta' }, props.etiqueta),
       h('div', { className: 'comparativo-valor' }, props.valor),
-      props.sub && h('div', { className: 'comparativo-sub' }, props.sub),
-      h('div', { className: 'comparativo-detalle' }, props.detalle)
+      props.detalle && h('div', { className: 'comparativo-detalle' }, props.detalle)
     );
   }
 
@@ -612,7 +614,9 @@
               h('div', { style: { width: pctNoRentable + '%', background: '#E24B4A' } }),
               h('div', { style: { width: pctAccelVacio + '%', background: '#378ADD' } })
             ),
-        tieneAvisos && h('span', { className: 'pill pill-warn', style: { marginRight: '8px' } }, v.advertencias.length + ' aviso(s)'),
+        h('span', { className: 'ranking-aviso-slot' },
+          tieneAvisos && h('i', { className: 'ti ti-alert-triangle', style: { color: '#EF9F27', fontSize: '14px' }, title: v.advertencias.length + ' aviso(s)', 'aria-hidden': 'true' })
+        ),
         h('span', { className: 'ranking-valor', style: { color: sinDatos ? '#9ca3af' : '#085041' } },
           sinDatos ? 'Sin datos' : numero(v.rendimientoKmPorLitro, 2) + ' km/L'
         ),
@@ -933,45 +937,71 @@
           ),
 
 
-          h('h3', { style: { marginTop: 0 } }, 'Comparativo de flota'),
+          h('h3', { style: { marginTop: 0 } }, '¿Cómo se usó el motor en el rango consultado?'),
+          (function () {
+            var f = resultado.flota;
+            var horas = f.horasMotorMinutos || 0;
+            var pctRentable = horas > 0 ? (f.conduccionRentableMinutos / horas) * 100 : 0;
+            var pctRalenti = horas > 0 ? (f.ralentiMinutos / horas) * 100 : 0;
+            var pctNoRentable = horas > 0 ? (f.conduccionNoRentableMinutos / horas) * 100 : 0;
+            var pctAccelVacio = horas > 0 ? (f.aceleracionVacioMinutos / horas) * 100 : 0;
+            return h('div', { className: 'historia-motor' },
+              h('p', { className: 'nota', style: { marginTop: 0, marginBottom: '10px' } },
+                formatearDuracion(f.horasMotorMinutos) + ' totales de motor encendido (' + f.vehiculos + ' unidad(es))'
+              ),
+              horas > 0
+                ? h('div', { className: 'historia-bar' },
+                    h('div', { style: { width: pctRentable + '%', background: '#1D9E75' } }),
+                    h('div', { style: { width: pctRalenti + '%', background: '#EF9F27' } }),
+                    h('div', { style: { width: pctNoRentable + '%', background: '#E24B4A' } }),
+                    h('div', { style: { width: pctAccelVacio + '%', background: '#378ADD' } })
+                  )
+                : h('div', { className: 'historia-bar historia-bar-vacia' }),
+              h('div', { className: 'historia-leyenda' },
+                h('span', null, '🟢 Rentable ' + numero(pctRentable, 0) + '%'),
+                h('span', null, '🟠 Ralentí ' + numero(pctRalenti, 0) + '%'),
+                h('span', null, '🔴 No rentable ' + numero(pctNoRentable, 0) + '%'),
+                h('span', null, '🔵 Acel. vacío ' + numero(pctAccelVacio, 0) + '%')
+              )
+            );
+          })(),
+
+          h('h3', null, 'Comparativo de flota'),
           h('div', { className: 'comparativo' },
             resultado.comparativo && resultado.comparativo.mejorDia
               ? h(TarjetaComparativa, {
+                  emoji: '🥇', fondo: '#FFF9EC',
                   etiqueta: 'Mejor día',
-                  icono: 'calendar-stats', fondoIcono: 'var(--azul-claro)', colorIcono: 'var(--azul-texto)',
-                  valor: formatearDiaYMD(resultado.comparativo.mejorDia.fecha),
-                  sub: numero(resultado.comparativo.mejorDia.rendimientoKmPorLitro, 2) + ' km/L',
+                  valor: formatearDiaYMD(resultado.comparativo.mejorDia.fecha) + ' · ' + numero(resultado.comparativo.mejorDia.rendimientoKmPorLitro, 2) + ' km/L',
                   detalle: numero(resultado.comparativo.mejorDia.kmRecorridos, 1) + ' km · ' + numero(resultado.comparativo.mejorDia.litrosConsumidos, 1) + ' L (toda la flota)',
                 })
               : h(TarjetaComparativa, {
+                  emoji: '🥇', fondo: 'var(--gris-claro)',
                   etiqueta: 'Mejor día',
-                  icono: 'calendar-stats', fondoIcono: 'var(--gris-claro)', colorIcono: 'var(--gris)',
                   valor: '—', detalle: 'Sin datos suficientes en el rango.',
                 }),
             resultado.comparativo && resultado.comparativo.mejorVehiculo
               ? h(TarjetaComparativa, {
+                  emoji: '🏆', fondo: '#EAF3DE',
                   etiqueta: 'Mejor vehículo',
-                  icono: 'trophy', fondoIcono: 'var(--verde-claro)', colorIcono: 'var(--verde-texto)',
-                  valor: resultado.comparativo.mejorVehiculo.placa,
-                  sub: numero(resultado.comparativo.mejorVehiculo.rendimientoKmPorLitro, 2) + ' km/L (promedio del rango)',
+                  valor: resultado.comparativo.mejorVehiculo.placa + ' · ' + numero(resultado.comparativo.mejorVehiculo.rendimientoKmPorLitro, 2) + ' km/L',
                   detalle: numero(resultado.comparativo.mejorVehiculo.kmRecorridos, 1) + ' km · ' + numero(resultado.comparativo.mejorVehiculo.litrosConsumidos, 1) + ' L',
                 })
               : h(TarjetaComparativa, {
+                  emoji: '🏆', fondo: 'var(--gris-claro)',
                   etiqueta: 'Mejor vehículo',
-                  icono: 'trophy', fondoIcono: 'var(--gris-claro)', colorIcono: 'var(--gris)',
                   valor: '—', detalle: 'Sin datos suficientes en el rango.',
                 }),
             resultado.comparativo && resultado.comparativo.mejorViaje
               ? h(TarjetaComparativa, {
+                  emoji: '🛣️', fondo: '#E6F1FB',
                   etiqueta: 'Mejor viaje',
-                  icono: 'route', fondoIcono: 'var(--ambar-claro)', colorIcono: 'var(--ambar-texto)',
                   valor: numero(resultado.comparativo.mejorViaje.rendimientoKmPorLitro, 2) + ' km/L',
-                  sub: formatearSoloFecha(resultado.comparativo.mejorViaje.inicio) + ', ' + formatearSoloHora(resultado.comparativo.mejorViaje.inicio) + ' → ' + formatearSoloHora(resultado.comparativo.mejorViaje.fin),
-                  detalle: numero(resultado.comparativo.mejorViaje.kmRecorridos, 1) + ' km · ' + numero(resultado.comparativo.mejorViaje.litrosSegunOdolitro, 1) + ' L · ' + resultado.comparativo.mejorViaje.placa + ' (≥' + resultado.comparativo.kmMinimoMejorViaje + ' km)',
+                  detalle: formatearSoloFecha(resultado.comparativo.mejorViaje.inicio) + ' · ' + resultado.comparativo.mejorViaje.placa + ' (≥' + resultado.comparativo.kmMinimoMejorViaje + ' km)',
                 })
               : h(TarjetaComparativa, {
+                  emoji: '🛣️', fondo: 'var(--gris-claro)',
                   etiqueta: 'Mejor viaje',
-                  icono: 'route', fondoIcono: 'var(--gris-claro)', colorIcono: 'var(--gris)',
                   valor: '—',
                   detalle: 'Ningún viaje superó el mínimo de ' + (resultado.comparativo ? resultado.comparativo.kmMinimoMejorViaje : 50) + ' km en el rango.',
                 })
