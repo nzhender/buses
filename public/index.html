@@ -255,7 +255,7 @@
     align-items: center;
     gap: 20px;
   }
-  .dona-svg { width: 120px; height: 120px; flex-shrink: 0; }
+  .dona-svg { width: 160px; height: 160px; flex-shrink: 0; }
   .dona-leyenda {
     display: flex;
     flex-direction: column;
@@ -645,8 +645,11 @@
     var pctNoRentable = horas > 0 ? (f.conduccionNoRentableMinutos / horas) * 100 : 0;
     var pctAccelVacio = horas > 0 ? (f.aceleracionVacioMinutos / horas) * 100 : 0;
 
-    // circunferencia de un círculo r=45 ≈ 282.7, usada para los stroke-dasharray
-    var CIRC = 282.7;
+    // circunferencia de un círculo r=58 ≈ 364.4, usada para los stroke-dasharray
+    var CIRC = 364.4;
+    var R = 58;
+    var GROSOR = 24;
+    var C = 80; // centro del viewBox (0 0 160 160)
     var segRentable = (pctRentable / 100) * CIRC;
     var segRalenti = (pctRalenti / 100) * CIRC;
     var segNoRentable = (pctNoRentable / 100) * CIRC;
@@ -671,30 +674,30 @@
         )
       ),
       h('div', { className: 'resumen-dona' },
-        h('svg', { viewBox: '0 0 120 120', className: 'dona-svg' },
-          h('circle', { cx: 60, cy: 60, r: 45, fill: 'none', stroke: '#eee', strokeWidth: 16 }),
+        h('svg', { viewBox: '0 0 160 160', className: 'dona-svg' },
+          h('circle', { cx: C, cy: C, r: R, fill: 'none', stroke: '#eee', strokeWidth: GROSOR }),
           horas > 0 && h('circle', {
-            cx: 60, cy: 60, r: 45, fill: 'none', stroke: '#1D9E75', strokeWidth: 16,
+            cx: C, cy: C, r: R, fill: 'none', stroke: '#1D9E75', strokeWidth: GROSOR,
             strokeDasharray: segRentable + ' ' + CIRC, strokeDashoffset: 0,
-            transform: 'rotate(-90 60 60)',
+            transform: 'rotate(-90 ' + C + ' ' + C + ')',
           }),
           horas > 0 && h('circle', {
-            cx: 60, cy: 60, r: 45, fill: 'none', stroke: '#EF9F27', strokeWidth: 16,
+            cx: C, cy: C, r: R, fill: 'none', stroke: '#EF9F27', strokeWidth: GROSOR,
             strokeDasharray: segRalenti + ' ' + CIRC, strokeDashoffset: offRalenti,
-            transform: 'rotate(-90 60 60)',
+            transform: 'rotate(-90 ' + C + ' ' + C + ')',
           }),
           horas > 0 && h('circle', {
-            cx: 60, cy: 60, r: 45, fill: 'none', stroke: '#E24B4A', strokeWidth: 16,
+            cx: C, cy: C, r: R, fill: 'none', stroke: '#E24B4A', strokeWidth: GROSOR,
             strokeDasharray: segNoRentable + ' ' + CIRC, strokeDashoffset: offNoRentable,
-            transform: 'rotate(-90 60 60)',
+            transform: 'rotate(-90 ' + C + ' ' + C + ')',
           }),
           horas > 0 && h('circle', {
-            cx: 60, cy: 60, r: 45, fill: 'none', stroke: '#378ADD', strokeWidth: 16,
+            cx: C, cy: C, r: R, fill: 'none', stroke: '#378ADD', strokeWidth: GROSOR,
             strokeDasharray: segAccelVacio + ' ' + CIRC, strokeDashoffset: offAccelVacio,
-            transform: 'rotate(-90 60 60)',
+            transform: 'rotate(-90 ' + C + ' ' + C + ')',
           }),
-          h('text', { x: 60, y: 56, textAnchor: 'middle', fontSize: 18, fontWeight: 500, fill: '#10151C' }, formatearDuracion(f.horasMotorMinutos)),
-          h('text', { x: 60, y: 72, textAnchor: 'middle', fontSize: 9, fill: '#9ca3af' }, 'motor')
+          h('text', { x: C, y: C - 4, textAnchor: 'middle', fontSize: 21, fontWeight: 600, fill: '#10151C' }, formatearDuracion(f.horasMotorMinutos)),
+          h('text', { x: C, y: C + 16, textAnchor: 'middle', fontSize: 11, fill: '#9ca3af' }, 'motor')
         ),
         h('div', { className: 'dona-leyenda' },
           h('div', { className: 'dona-leyenda-item' },
