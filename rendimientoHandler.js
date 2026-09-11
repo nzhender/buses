@@ -9,6 +9,7 @@ const {
   calcularMejorDia,
   calcularMejorViaje,
 } = require('./rendimiento');
+const { resolverLocalidades, claveCoordenada } = require('./geocoding');
 
 // Mínimo de km para que un viaje individual califique como candidato a
 // "mejor viaje" del comparativo de flota (evita que viajes muy cortos, con
@@ -70,19 +71,46 @@ async function obtenerRendimiento({ empresa, placas, desde, hasta }) {
       const rendimiento = calcularRendimiento(eventos, { desde, hasta });
       const viajes = calcularRendimientoPorViaje(eventos, { desde, hasta });
 
-      // Serie liviana de velocidad para graficar en el front (solo timestamp + velocidad).
-      const serieVelocidad = eventos
-        .filter((e) => e.gps_utc_time)
-        .map((e) => ({ t: e.gps_utc_time, v: e.speed }));
-
       // eventos crudos se guardan temporalmente para el comparativo de
       // flota (mejor día / mejor viaje); se descartan antes de responder,
       // no deben viajar completos en la respuesta de la API.
-      return { placa, eventos, ...rendimiento, viajes, serieVelocidad };
+      return { placa, eventos, ...rendimiento, viajes };
     })
   );
 
   const eventosPorVehiculo = resultadosPorVehiculo.map((r) => ({ placa: r.placa, eventos: r.eventos }));
+
+  // Resuelve la localidad (comuna/ciudad) de origen y destino de cada viaje,
+  // de todos los vehículos consultados, en un solo lote (con cache y límite
+  // de velocidad manejados dentro de resolverLocalidades). Si el servicio de
+  // geocodificación falla por completo, no debe romper la respuesta: los
+  // viajes igual se devuelven, solo sin el campo "localidad".
+  try {
+    const todasLasCoordenadas = [];
+    resultadosPorVehiculo.forEach((r) => {
+      (r.viajes || []).forEach((viaje) => {
+        if (viaje.coordenadaInicio) todasLasCoordenadas.push(viaje.coordenadaInicio);
+        if (viaje.coordenadaFin) todasLasCoordenadas.push(viaje.coordenadaFin);
+      });
+    });
+
+    const localidadesPorCoordenada = await resolverLocalidades(todasLasCoordenadas);
+
+    resultadosPorVehiculo.forEach((r) => {
+      (r.viajes || []).forEach((viaje) => {
+        if (viaje.coordenadaInicio) {
+          const clave = claveCoordenada(viaje.coordenadaInicio.lat, viaje.coordenadaInicio.lon);
+          viaje.coordenadaInicio.localidad = localidadesPorCoordenada.get(clave) || null;
+        }
+        if (viaje.coordenadaFin) {
+          const clave = claveCoordenada(viaje.coordenadaFin.lat, viaje.coordenadaFin.lon);
+          viaje.coordenadaFin.localidad = localidadesPorCoordenada.get(clave) || null;
+        }
+      });
+    });
+  } catch (err) {
+    console.warn('[rendimientoHandler] Falló la resolución de localidades, se continúa sin ellas:', err.message);
+  }
 
   const mejorDia = calcularMejorDia(eventosPorVehiculo, { desde, hasta });
   const mejorViaje = calcularMejorViaje(eventosPorVehiculo, { desde, hasta, kmMinimo: KM_MINIMO_MEJOR_VIAJE });

@@ -374,6 +374,17 @@ function calcularRendimiento(eventos, { desde, hasta }) {
  *     fuel_consumption; una diferencia grande indica pings perdidos o un viaje
  *     mal cerrado.
  */
+/**
+ * Una coordenada 0,0 no es una ubicación real: es la señal de que el GPS
+ * perdió cobertura en ese momento (ver notas de calidad de datos arriba).
+ * Se descarta en vez de mostrarla como si fuera una ubicación válida.
+ */
+function coordenadaValida(evento) {
+  if (typeof evento.latitude !== 'number' || typeof evento.longitude !== 'number') return false;
+  if (evento.latitude === 0 && evento.longitude === 0) return false;
+  return true;
+}
+
 function calcularRendimientoPorViaje(eventos, { desde, hasta }) {
   const enRango = filtrarPorRango(ordenarPorTiempo(eventos), desde, hasta);
   if (enRango.length === 0) return [];
@@ -411,6 +422,8 @@ function calcularRendimientoPorViaje(eventos, { desde, hasta }) {
       diferenciaControlCalidad,
       rendimientoKmPorLitro: litrosOdolitro > 0 ? Number((km / litrosOdolitro).toFixed(3)) : null,
       muestras: eventosViaje.length,
+      coordenadaInicio: coordenadaValida(inicio) ? { lat: inicio.latitude, lon: inicio.longitude } : null,
+      coordenadaFin: coordenadaValida(fin) ? { lat: fin.latitude, lon: fin.longitude } : null,
     };
   });
 }
