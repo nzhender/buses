@@ -673,10 +673,11 @@
       { color: '#378ADD', crudo: segAccelVacioCrudo, offset: -(segRentableCrudo + segRalentiCrudo + segNoRentableCrudo) },
     ];
 
-    // se pintan del más chico al más grande: así, si un segmento diminuto
-    // se agranda para ser visible (anchoVisible) y se superpone sobre su
-    // vecino, queda ENCIMA en vez de que el vecino más grande lo tape.
-    var segmentosOrdenados = segmentos.slice().sort(function (a, b) { return a.crudo - b.crudo; });
+    // se pintan del más GRANDE al más CHICO: en SVG, lo que se dibuja al
+    // final queda arriba. Así el segmento más chico (el que se agranda
+    // artificialmente para ser visible) siempre termina encima de sus
+    // vecinos, en vez de que un vecino más grande lo tape.
+    var segmentosOrdenados = segmentos.slice().sort(function (a, b) { return b.crudo - a.crudo; });
 
     return h('div', { className: 'resumen-flota' },
       h('div', { className: 'resumen-calugas' },
