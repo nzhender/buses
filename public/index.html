@@ -396,6 +396,7 @@
     color: #111827;
   }
   .tabla-viajes tr:last-child td { border-bottom: none; }
+  .fila-detenido td { background: #FAFAF9; color: var(--gris); font-size: 12px; font-style: italic; }
   .nota { font-size: 12px; color: var(--gris); margin-top: 8px; }
 </style>
 </head>
@@ -595,7 +596,13 @@
         ),
 
         h('div', { style: { marginTop: '16px' } },
-          h('strong', { style: { fontSize: '13px' } }, (v.viajes || []).length + ' viaje(s) detectado(s) en el rango'),
+          h('strong', { style: { fontSize: '13px' } },
+            (v.viajes || []).filter(function (x) { return x.tipo === 'viaje'; }).length + ' viaje(s) detectado(s) en el rango' +
+            (function () {
+              var detenciones = (v.viajes || []).filter(function (x) { return x.tipo === 'detenido'; }).length;
+              return detenciones > 0 ? ' · ' + detenciones + ' período(s) con el motor apagado' : '';
+            })()
+          ),
           (v.viajes || []).length > 0 && h('table', { className: 'tabla-viajes' },
             h('thead', null,
               h('tr', null,
@@ -610,6 +617,16 @@
             ),
             h('tbody', null,
               (v.viajes || []).map(function (viaje, i) {
+                if (viaje.tipo === 'detenido') {
+                  return h('tr', { key: 'detenido-' + i, className: 'fila-detenido' },
+                    h('td', { colSpan: 7 },
+                      h('i', { className: 'ti ti-power', style: { marginRight: '6px', color: '#9ca3af' }, 'aria-hidden': 'true' }),
+                      'Motor apagado ' + formatearDuracion(viaje.duracionMinutos) +
+                      ' (' + formatearSoloFecha(viaje.inicio) + ' ' + formatearSoloHora(viaje.inicio) + ' → ' + formatearSoloFecha(viaje.fin) + ' ' + formatearSoloHora(viaje.fin) + ')' +
+                      (viaje.ralentiMinutos > 0 ? ' · ralentí ' + formatearDuracion(viaje.ralentiMinutos) : '')
+                    )
+                  );
+                }
                 return h('tr', { key: 'viaje-' + i },
                   h('td', null, formatearSoloFecha(viaje.inicio)),
                   h('td', null, formatearSoloHora(viaje.inicio)),
