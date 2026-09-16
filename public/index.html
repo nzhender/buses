@@ -396,9 +396,6 @@
     color: #111827;
   }
   .tabla-viajes tr:last-child td { border-bottom: none; }
-  .coord-link { color: #378ADD; text-decoration: none; font-size: 11px; white-space: nowrap; }
-  .coord-link:hover { text-decoration: underline; }
-  .coord-localidad { font-size: 12px; font-weight: 600; color: #10151C; white-space: nowrap; }
   .nota { font-size: 12px; color: var(--gris); margin-top: 8px; }
 </style>
 </head>
@@ -440,18 +437,8 @@
     return d.toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' });
   }
 
-  // Renderiza una coordenada {lat, lon, localidad?} como enlace a Google
-  // Maps; si se resolvió la localidad (comuna/ciudad), se muestra arriba del
-  // link. Si no hay coordenada válida (GPS perdido en ese punto), un guión.
-  function enlaceCoordenada(coord) {
-    if (!coord) return '—';
-    var texto = coord.lat.toFixed(5) + ', ' + coord.lon.toFixed(5);
-    var url = 'https://www.google.com/maps?q=' + coord.lat + ',' + coord.lon;
-    return h('div', null,
-      coord.localidad && h('div', { className: 'coord-localidad' }, coord.localidad),
-      h('a', { href: url, target: '_blank', rel: 'noopener noreferrer', className: 'coord-link' }, texto)
-    );
-  }
+
+
 
   function formatearFechaHoy() {
     var d = new Date();
@@ -471,6 +458,16 @@
     var horas = Math.floor(minutos / 60);
     var mins = Math.round(minutos % 60);
     return horas + 'h ' + mins + 'min';
+  }
+
+  // duración + porcentaje sobre un total (ej. "2h 15min (34%)"), usado para
+  // mostrar cuánto pesa el ralentí/aceleración en vacío/etc. sobre las horas
+  // de motor totales de ese vehículo o de la flota.
+  function formatearDuracionConPorcentaje(minutos, totalMinutos) {
+    var base = formatearDuracion(minutos);
+    if (!totalMinutos || totalMinutos <= 0 || minutos === null || minutos === undefined) return base;
+    var pct = (minutos / totalMinutos) * 100;
+    return base + ' (' + numero(pct, 0) + '%)';
   }
 
   // combina un input date (YYYY-MM-DD) + hora (00-23) + minuto (00-59), en
@@ -591,10 +588,10 @@
           h(Metrica, { etiqueta: 'km/L', valor: v.rendimientoKmPorLitro === null ? '—' : numero(v.rendimientoKmPorLitro, 2), color: '#378ADD' }),
           h(Metrica, { etiqueta: 'vel. máxima', valor: v.velocidadMaxima === null ? '—' : numero(v.velocidadMaxima, 1), color: '#378ADD' }),
           h(Metrica, { etiqueta: 'horas de motor', valor: formatearDuracion(v.horasMotorMinutos), color: '#378ADD' }),
-          h(Metrica, { etiqueta: 'ralentí', valor: formatearDuracion(v.ralentiMinutos), color: '#E24B4A' }),
-          h(Metrica, { etiqueta: 'aceleración en vacío', valor: formatearDuracion(v.aceleracionVacioMinutos), color: '#EF9F27' }),
-          h(Metrica, { etiqueta: 'conducción rentable', valor: formatearDuracion(v.conduccionRentableMinutos), color: '#1D9E75' }),
-          h(Metrica, { etiqueta: 'conducción no rentable', valor: formatearDuracion(v.conduccionNoRentableMinutos), color: '#E24B4A' })
+          h(Metrica, { etiqueta: 'ralentí', valor: formatearDuracionConPorcentaje(v.ralentiMinutos, v.horasMotorMinutos), color: '#E24B4A' }),
+          h(Metrica, { etiqueta: 'aceleración en vacío', valor: formatearDuracionConPorcentaje(v.aceleracionVacioMinutos, v.horasMotorMinutos), color: '#EF9F27' }),
+          h(Metrica, { etiqueta: 'conducción rentable', valor: formatearDuracionConPorcentaje(v.conduccionRentableMinutos, v.horasMotorMinutos), color: '#1D9E75' }),
+          h(Metrica, { etiqueta: 'conducción no rentable', valor: formatearDuracionConPorcentaje(v.conduccionNoRentableMinutos, v.horasMotorMinutos), color: '#E24B4A' })
         ),
 
         h('div', { style: { marginTop: '16px' } },
@@ -608,8 +605,7 @@
                 h('th', null, 'km recorridos'),
                 h('th', null, 'Litros consumidos'),
                 h('th', null, 'Rendimiento'),
-                h('th', null, 'Origen'),
-                h('th', null, 'Destino')
+                h('th', null, 'Ralentí')
               )
             ),
             h('tbody', null,
@@ -621,8 +617,7 @@
                   h('td', null, numero(viaje.kmRecorridos, 1)),
                   h('td', null, numero(viaje.litrosSegunOdolitro, 1)),
                   h('td', null, viaje.rendimientoKmPorLitro !== null ? numero(viaje.rendimientoKmPorLitro, 2) + ' km/L' : '—'),
-                  h('td', null, enlaceCoordenada(viaje.coordenadaInicio)),
-                  h('td', null, enlaceCoordenada(viaje.coordenadaFin))
+                  h('td', null, formatearDuracion(viaje.ralentiMinutos))
                 );
               })
             )
@@ -712,22 +707,22 @@
           h('div', { className: 'dona-leyenda-item' },
             h('span', { className: 'dona-punto', style: { background: '#1D9E75' } }),
             h('span', null, 'Conducción rentable'),
-            h('strong', null, formatearDuracion(f.conduccionRentableMinutos))
+            h('strong', null, formatearDuracionConPorcentaje(f.conduccionRentableMinutos, horas))
           ),
           h('div', { className: 'dona-leyenda-item' },
             h('span', { className: 'dona-punto', style: { background: '#EF9F27' } }),
             h('span', null, 'Ralentí'),
-            h('strong', null, formatearDuracion(f.ralentiMinutos))
+            h('strong', null, formatearDuracionConPorcentaje(f.ralentiMinutos, horas))
           ),
           h('div', { className: 'dona-leyenda-item' },
             h('span', { className: 'dona-punto', style: { background: '#378ADD' } }),
             h('span', null, 'Aceleración en vacío'),
-            h('strong', null, formatearDuracion(f.aceleracionVacioMinutos))
+            h('strong', null, formatearDuracionConPorcentaje(f.aceleracionVacioMinutos, horas))
           ),
           h('div', { className: 'dona-leyenda-item' },
             h('span', { className: 'dona-punto', style: { background: '#E24B4A' } }),
             h('span', null, 'Conducción no rentable'),
-            h('strong', null, formatearDuracion(f.conduccionNoRentableMinutos))
+            h('strong', null, formatearDuracionConPorcentaje(f.conduccionNoRentableMinutos, horas))
           )
         )
       )
