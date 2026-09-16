@@ -385,43 +385,114 @@ function coordenadaValida(evento) {
   return true;
 }
 
-function calcularRendimientoPorViaje(eventos, { desde, hasta }) {
-  const enRango = filtrarPorRango(ordenarPorTiempo(eventos), desde, hasta);
+/**
+ * Motor apagado: RPM exactamente en 0 (a diferencia del ralentí normal, que
+ * es RPM 500-620 con el motor encendido en marcha mínima) junto con
+ * velocidad 0. RPM=0 es una señal confiable de "apagado" por sí sola: un
+ * motor encendido nunca marca 0 RPM ni en ralentí. No confirmamos que la API
+ * traiga un campo explícito de "ignición"; si más adelante se confirma su
+ * nombre exacto, se puede sumar aquí como verificación adicional.
+ */
+function motorApagado(evento) {
+  return evento.rpm === 0 && evento.speed === 0;
+}
+
+/**
+ * Separa los eventos de un vehículo en segmentos alternados de 'viaje'
+ * (el vehículo se desplaza) y 'detenido' (motor apagado, sin desplazamiento)
+ * — máquina de estados simple:
+ *  - Un 'viaje' termina cuando el motor se apaga (motorApagado) o cuando se
+ *    detecta un reset del contador fuel_consumption (nuevo ciclo de
+ *    encendido reportado por la API, aunque no se haya visto motorApagado).
+ *  - Un 'detenido' termina cuando el motor vuelve a estar en marcha
+ *    (deja de cumplirse motorApagado).
+ */
+function segmentarViajesYDetenciones(enRango) {
   if (enRango.length === 0) return [];
 
-  const viajes = [];
-  let viajeActual = [enRango[0]];
+  const segmentos = [];
+  let tipoActual = motorApagado(enRango[0]) ? 'detenido' : 'viaje';
+  let eventosActuales = [enRango[0]];
 
   for (let i = 1; i < enRango.length; i++) {
     const anterior = enRango[i - 1];
     const actual = enRango[i];
-    const nuevoViaje = actual.fuel_consumption < anterior.fuel_consumption;
-    if (nuevoViaje) {
-      viajes.push(viajeActual);
-      viajeActual = [actual];
+    const apagadoAhora = motorApagado(actual);
+    const resetCombustible = actual.fuel_consumption < anterior.fuel_consumption;
+
+    let cambiaSegmento = false;
+    let tipoSiguiente = tipoActual;
+
+    if (tipoActual === 'viaje') {
+      if (apagadoAhora || resetCombustible) {
+        cambiaSegmento = true;
+        tipoSiguiente = apagadoAhora ? 'detenido' : 'viaje';
+      }
     } else {
-      viajeActual.push(actual);
+      // tipoActual === 'detenido': termina cuando el motor vuelve a andar.
+      if (!apagadoAhora) {
+        cambiaSegmento = true;
+        tipoSiguiente = 'viaje';
+      }
+    }
+
+    if (cambiaSegmento) {
+      segmentos.push({ tipo: tipoActual, eventos: eventosActuales });
+      tipoActual = tipoSiguiente;
+      eventosActuales = [actual];
+    } else {
+      eventosActuales.push(actual);
     }
   }
-  viajes.push(viajeActual);
+  segmentos.push({ tipo: tipoActual, eventos: eventosActuales });
 
-  return viajes.map((eventosViaje) => {
+  return segmentos;
+}
+
+function calcularRendimientoPorViaje(eventos, { desde, hasta }) {
+  const enRango = filtrarPorRango(ordenarPorTiempo(eventos), desde, hasta);
+  if (enRango.length === 0) return [];
+
+  const segmentos = segmentarViajesYDetenciones(enRango);
+
+  return segmentos.map((segmento) => {
+    const eventosViaje = segmento.eventos;
     const inicio = eventosViaje[0];
     const fin = eventosViaje[eventosViaje.length - 1];
     const km = Number((fin.odometer - inicio.odometer).toFixed(2));
     const litrosOdolitro = Number((fin.odoliter - inicio.odoliter).toFixed(2));
+    const duracionMinutos = Number(((new Date(fin.gps_utc_time) - new Date(inicio.gps_utc_time)) / 60000).toFixed(1));
+    const ralentiMinutos = sumarMinutosPorCondicion(eventosViaje, esRalenti);
+
+    if (segmento.tipo === 'detenido') {
+      // Tiempo con el motor apagado: no es un viaje. Se informa como tal,
+      // con su duración total y cuánto de ese tiempo fue ralentí (el motor
+      // pudo haberse encendido brevemente sin llegar a moverse).
+      return {
+        tipo: 'detenido',
+        inicio: inicio.gps_utc_time,
+        fin: fin.gps_utc_time,
+        duracionMinutos,
+        ralentiMinutos,
+        litrosConsumidos: litrosOdolitro,
+        muestras: eventosViaje.length,
+      };
+    }
+
     const litrosFuelConsumption = Number((fin.fuel_consumption || 0).toFixed(2));
     const diferenciaControlCalidad = Number((litrosOdolitro - litrosFuelConsumption).toFixed(2));
 
     return {
+      tipo: 'viaje',
       inicio: inicio.gps_utc_time,
       fin: fin.gps_utc_time,
+      duracionMinutos,
       kmRecorridos: km,
       litrosSegunOdolitro: litrosOdolitro,
       litrosSegunFuelConsumption: litrosFuelConsumption,
       diferenciaControlCalidad,
       rendimientoKmPorLitro: litrosOdolitro > 0 ? Number((km / litrosOdolitro).toFixed(3)) : null,
-      ralentiMinutos: sumarMinutosPorCondicion(eventosViaje, esRalenti),
+      ralentiMinutos,
       muestras: eventosViaje.length,
       coordenadaInicio: coordenadaValida(inicio) ? { lat: inicio.latitude, lon: inicio.longitude } : null,
       coordenadaFin: coordenadaValida(fin) ? { lat: fin.latitude, lon: fin.longitude } : null,
@@ -556,6 +627,7 @@ function calcularMejorViaje(eventosPorVehiculo, { desde, hasta, kmMinimo }) {
   eventosPorVehiculo.forEach(({ placa, eventos }) => {
     const viajes = calcularRendimientoPorViaje(eventos, { desde, hasta });
     viajes.forEach((viaje) => {
+      if (viaje.tipo !== 'viaje') return;
       if (viaje.kmRecorridos < kmMinimo) return;
       if (viaje.rendimientoKmPorLitro === null) return;
       if (!mejor || viaje.rendimientoKmPorLitro > mejor.rendimientoKmPorLitro) {
