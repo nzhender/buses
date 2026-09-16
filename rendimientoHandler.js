@@ -80,37 +80,38 @@ async function obtenerRendimiento({ empresa, placas, desde, hasta }) {
 
   const eventosPorVehiculo = resultadosPorVehiculo.map((r) => ({ placa: r.placa, eventos: r.eventos }));
 
-  // Resuelve la localidad (comuna/ciudad) de origen y destino de cada viaje,
-  // de todos los vehículos consultados, en un solo lote (con cache y límite
-  // de velocidad manejados dentro de resolverLocalidades). Si el servicio de
-  // geocodificación falla por completo, no debe romper la respuesta: los
-  // viajes igual se devuelven, solo sin el campo "localidad".
-  try {
-    const todasLasCoordenadas = [];
-    resultadosPorVehiculo.forEach((r) => {
-      (r.viajes || []).forEach((viaje) => {
-        if (viaje.coordenadaInicio) todasLasCoordenadas.push(viaje.coordenadaInicio);
-        if (viaje.coordenadaFin) todasLasCoordenadas.push(viaje.coordenadaFin);
-      });
-    });
-
-    const localidadesPorCoordenada = await resolverLocalidades(todasLasCoordenadas);
-
-    resultadosPorVehiculo.forEach((r) => {
-      (r.viajes || []).forEach((viaje) => {
-        if (viaje.coordenadaInicio) {
-          const clave = claveCoordenada(viaje.coordenadaInicio.lat, viaje.coordenadaInicio.lon);
-          viaje.coordenadaInicio.localidad = localidadesPorCoordenada.get(clave) || null;
-        }
-        if (viaje.coordenadaFin) {
-          const clave = claveCoordenada(viaje.coordenadaFin.lat, viaje.coordenadaFin.lon);
-          viaje.coordenadaFin.localidad = localidadesPorCoordenada.get(clave) || null;
-        }
-      });
-    });
-  } catch (err) {
-    console.warn('[rendimientoHandler] Falló la resolución de localidades, se continúa sin ellas:', err.message);
-  }
+  // La resolución de localidad (comuna/ciudad) vía geocoding.js está
+  // desactivada por ahora: el front ya no muestra Origen/Destino, y esa
+  // llamada es lenta (límite de ~1 consulta/segundo de Nominatim), así que
+  // mantenerla activa solo agregaría demora sin ningún beneficio visible.
+  // Las coordenadas crudas (coordenadaInicio/coordenadaFin) se siguen
+  // calculando igual en rendimiento.js, sin costo, por si se reactiva esto
+  // más adelante — solo faltaría descomentar este bloque.
+  //
+  // try {
+  //   const todasLasCoordenadas = [];
+  //   resultadosPorVehiculo.forEach((r) => {
+  //     (r.viajes || []).forEach((viaje) => {
+  //       if (viaje.coordenadaInicio) todasLasCoordenadas.push(viaje.coordenadaInicio);
+  //       if (viaje.coordenadaFin) todasLasCoordenadas.push(viaje.coordenadaFin);
+  //     });
+  //   });
+  //   const localidadesPorCoordenada = await resolverLocalidades(todasLasCoordenadas);
+  //   resultadosPorVehiculo.forEach((r) => {
+  //     (r.viajes || []).forEach((viaje) => {
+  //       if (viaje.coordenadaInicio) {
+  //         const clave = claveCoordenada(viaje.coordenadaInicio.lat, viaje.coordenadaInicio.lon);
+  //         viaje.coordenadaInicio.localidad = localidadesPorCoordenada.get(clave) || null;
+  //       }
+  //       if (viaje.coordenadaFin) {
+  //         const clave = claveCoordenada(viaje.coordenadaFin.lat, viaje.coordenadaFin.lon);
+  //         viaje.coordenadaFin.localidad = localidadesPorCoordenada.get(clave) || null;
+  //       }
+  //     });
+  //   });
+  // } catch (err) {
+  //   console.warn('[rendimientoHandler] Falló la resolución de localidades, se continúa sin ellas:', err.message);
+  // }
 
   const mejorDia = calcularMejorDia(eventosPorVehiculo, { desde, hasta });
   const mejorViaje = calcularMejorViaje(eventosPorVehiculo, { desde, hasta, kmMinimo: KM_MINIMO_MEJOR_VIAJE });

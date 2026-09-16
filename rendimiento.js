@@ -421,6 +421,7 @@ function calcularRendimientoPorViaje(eventos, { desde, hasta }) {
       litrosSegunFuelConsumption: litrosFuelConsumption,
       diferenciaControlCalidad,
       rendimientoKmPorLitro: litrosOdolitro > 0 ? Number((km / litrosOdolitro).toFixed(3)) : null,
+      ralentiMinutos: sumarMinutosPorCondicion(eventosViaje, esRalenti),
       muestras: eventosViaje.length,
       coordenadaInicio: coordenadaValida(inicio) ? { lat: inicio.latitude, lon: inicio.longitude } : null,
       coordenadaFin: coordenadaValida(fin) ? { lat: fin.latitude, lon: fin.longitude } : null,
