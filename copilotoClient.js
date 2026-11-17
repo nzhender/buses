@@ -62,8 +62,25 @@ async function fetchTramo({ apiKey, licensePlate, from, to }) {
       }
 
       const body = await res.json();
-      const eventos = body?.data?.[licensePlate] || [];
+      const data = body?.data || {};
       const meta = body?.meta || {};
+
+      // La API devuelve los eventos bajo la clave de la patente. Si esa clave
+      // viene con otro formato (mayúsculas, espacios, guiones), se busca
+      // ignorando esas diferencias en vez de devolver vacío sin avisar.
+      const normalizar = (s) => String(s).replace(/[\s-]/g, '').toUpperCase();
+      let eventos = data[licensePlate];
+      if (!eventos) {
+        const claveReal = Object.keys(data).find((k) => normalizar(k) === normalizar(licensePlate));
+        eventos = claveReal ? data[claveReal] : [];
+      }
+
+      if (eventos.length === 0) {
+        console.warn(
+          `[copiloto] Sin eventos para ${licensePlate} (${from} a ${to}). ` +
+            `Claves en data: ${JSON.stringify(Object.keys(data))}; meta: ${JSON.stringify(meta)}`
+        );
+      }
 
       if (
         meta.total_items &&
